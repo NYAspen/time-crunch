@@ -169,8 +169,8 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 **Security model:**
 - Browsers only **read**, and Row Level Security (RLS) limits what each user sees.
 - Every write goes through one of two paths:
-  - A security-definer Postgres function (RPC). These functions check who is calling: for team actions, that the caller is that team, owns the card, the team is active, and the game is not paused.
-  - A server action (`app/**/actions.ts`) that re-checks admin rights and then uses the secret key (`lib/supabase/admin.ts`, server-only).
+  - A security-definer Postgres function (RPC). These functions check who is calling: for team actions, that the caller is that team, owns the card, the team is active, and the game is not paused. **The browser calls these directly** (`app/team/gameActions.ts`, `app/admin/adminActions.ts`). Don't route them through Next.js server actions: on Vercel, server actions run one at a time per phone and can hit slow cold starts, which made the game feel laggy.
+  - A server action (`app/admin/actions.ts`, plus the login actions) that re-checks admin rights and then uses the secret key (`lib/supabase/admin.ts`, server-only). Only managing team logins needs this.
 - Never trust the browser for remaining time, card ownership, challenge availability or elimination.
 
 **Atomic actions:** claims, draws and steals each run inside one Postgres function with row locks, so simultaneous requests can't both succeed.
@@ -256,7 +256,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - Teams can still change speeds by hand to fix mistakes. The banner offers a one-tap fix if a speed doesn't match the curse.
 - The admin sees active curses, with each team's current speed, and can clear a curse.
 - Reset game, plus delete-all for challenges and for cards.
-- Still to do: setup instructions in a README.
+- Setup instructions are in `README.md` (2026-10-23).
 - Stealing by teams was deferred. The admin can still move cards.
 - **Test:** the full loop with several teams on phones.
 
@@ -269,7 +269,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 
 ## 9. Progress tracker
 
-**Current stage:** Tier 1 is complete (Stages 1–5), and the first round of UI adjustments was done on 2026-10-23. Next come the full-loop test on several phones and a README. It is the last Tier 1 stage.
+**Current stage:** Tier 1 is complete (Stages 1–5), and the first round of UI adjustments was done on 2026-10-23. The README was written on 2026-10-23. Next is the full-loop test on several phones. It is the last Tier 1 stage.
 
 ### Implemented
 - **Stage 1:**
@@ -370,11 +370,13 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 
 ### Outstanding
 - Full-loop test on several phones.
-- README with setup instructions for future seasons.
 - Stages 2–5 (Tier 1) by Nov 1. Then the playtest, Tier 2 if there is time, and the rehearsal (section 2).
 - Write the real challenge list and card deck in the content format by about Nov 4.
 
 ### Known bugs
+- Fixed 2026-10-23: on Vercel, updates felt slow (countdowns lagging), and the admin's board count flickered.
+  - Cause: every button went phone → Vercel server action → Supabase. Next.js runs server actions one at a time per phone, Vercel adds cold starts, and an action that refreshed the login cookie re-rendered the page.
+  - Fix: game actions now call the database functions straight from the browser. Realtime itself was measured at about 0.4–0.5 s from Supabase to a logged-in team.
 - Fixed 2026-10-22 (migration 0007): a "draw 1" looked like it didn't draw anything, because the team still had to tap "Keep" on the only card. A single revealed card now goes straight into the hand.
 - Fixed 2026-10-22: banked time took several seconds to update after a challenge claim. It only updated when the realtime message arrived. All actions now trigger an immediate reload of every live section.
 - Fixed 2026-10-22: after a team was brought back, its speed buttons appeared not to work.

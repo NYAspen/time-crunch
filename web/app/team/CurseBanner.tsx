@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadCurses, loadTeams } from "@/lib/queries";
 import type { ActionResult, Speed } from "@/lib/types";
-import { clearCurse, setMySpeed } from "./actions";
+import { clearCurse, setMySpeed } from "./gameActions";
 import { Notice } from "@/components/Notice";
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });

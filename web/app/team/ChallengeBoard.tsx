@@ -5,7 +5,7 @@ import { ChallengeRewards } from "@/components/ChallengeRewards";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadChallenges, loadGameState, loadTeams } from "@/lib/queries";
 import type { ActionResult, Challenge } from "@/lib/types";
-import { claimChallenge } from "./actions";
+import { claimChallenge } from "./gameActions";
 import { Notice } from "@/components/Notice";
 
 export function ChallengeBoard({ teamId }: { teamId: string }) {

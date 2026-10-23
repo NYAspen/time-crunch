@@ -7,7 +7,7 @@ import { DeleteAllButton } from "@/components/DeleteAllButton";
 import { refreshAllLiveTables, useLiveTable, withRefresh } from "@/components/useLiveTable";
 import { loadCardDraws, loadCards, loadCardTypes, loadTeams } from "@/lib/queries";
 import type { ActionResult, Card, CardType, PublicTeam } from "@/lib/types";
-import { changeCopies, deleteAllCards, grantDraw, importCards, moveCard, updateCardType } from "./actions";
+import { changeCopies, deleteAllCards, grantDraw, importCards, moveCard, updateCardType } from "./adminActions";
 import { Notice } from "@/components/Notice";
 
 const EXAMPLE =

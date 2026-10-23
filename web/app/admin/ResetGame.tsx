@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { refreshAllLiveTables } from "@/components/useLiveTable";
 import type { ActionResult } from "@/lib/types";
-import { resetGame } from "./actions";
+import { resetGame } from "./adminActions";
 import { Notice } from "@/components/Notice";
 
 export function ResetGame() {

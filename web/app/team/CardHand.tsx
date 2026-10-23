@@ -5,7 +5,7 @@ import { CardView } from "@/components/CardView";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadCardDraws, loadCards, loadCardTypes, loadTeams } from "@/lib/queries";
 import type { ActionResult, Card, CardType, PublicTeam } from "@/lib/types";
-import { chooseCard, discardCard, openDraw, playCard } from "./actions";
+import { chooseCard, discardCard, openDraw, playCard } from "./gameActions";
 import { Notice } from "@/components/Notice";
 
 export function CardHand({ teamId }: { teamId: string }) {

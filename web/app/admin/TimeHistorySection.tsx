@@ -7,7 +7,7 @@ import { TimeHistory } from "@/components/TimeHistory";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadLedger, loadTeams } from "@/lib/queries";
 import type { ActionResult } from "@/lib/types";
-import { undoTimeEntry } from "./actions";
+import { undoTimeEntry } from "./adminActions";
 
 // Every team's time changes, newest first, with Undo.
 export function TimeHistorySection() {

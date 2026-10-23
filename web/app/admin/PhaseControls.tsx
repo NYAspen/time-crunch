@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadGameState } from "@/lib/queries";
 import { PHASE_LABELS, PHASES, type ActionResult, type Phase } from "@/lib/types";
-import { setPaused, setPhase } from "./actions";
+import { setPaused, setPhase } from "./adminActions";
 import { Notice } from "@/components/Notice";
 
 export function PhaseControls() {

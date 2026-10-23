@@ -1,12 +1,14 @@
-"use server";
-
-import { createClient } from "@/lib/supabase/server";
+// Team game actions. These call the database functions DIRECTLY from the
+// phone (no trip through the Vercel server), which keeps the game fast. Each
+// database function checks who is calling, so this is just as secure: a team
+// can only ever act as itself, on its own cards, while it is active.
+import { createClient } from "@/lib/supabase/client";
 import type { ActionResult, Speed } from "@/lib/types";
 
 // The database function checks that the caller is an active team and only
 // ever changes the caller's own speed.
 export async function setMySpeed(speed: Speed): Promise<ActionResult> {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { error } = await supabase.rpc("set_my_speed", { new_speed: speed });
   if (error) return { ok: false, message: error.message };
   return { ok: true, message: `Countdown speed set to ${speed}×.` };
@@ -14,7 +16,7 @@ export async function setMySpeed(speed: Speed): Promise<ActionResult> {
 
 // The database function locks the challenge, so only the first claim wins.
 export async function claimChallenge(challengeId: string): Promise<ActionResult> {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data, error } = await supabase.rpc("claim_challenge", { p_challenge: challengeId });
   if (error) return { ok: false, message: error.message };
 
@@ -32,14 +34,14 @@ export async function claimChallenge(challengeId: string): Promise<ActionResult>
 // ---------------------------------------------------------------------------
 
 export async function openDraw(): Promise<ActionResult> {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data, error } = await supabase.rpc("open_draw");
   if (error) return { ok: false, message: error.message };
   return { ok: true, message: data ? String(data) : "Pick one card to keep." };
 }
 
 export async function chooseCard(cardId: string): Promise<ActionResult> {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data, error } = await supabase.rpc("choose_card", { p_card: cardId });
   if (error) return { ok: false, message: error.message };
   return { ok: true, message: data ? `${data} added to your hand.` : "Card added to your hand." };
@@ -49,7 +51,7 @@ export async function playCard(
   cardId: string,
   options: { targetCardId?: string; targetTeamId?: string; inRange?: boolean } = {},
 ): Promise<ActionResult> {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data, error } = await supabase.rpc("use_card", {
     p_card: cardId,
     p_target: options.targetCardId ?? null,
@@ -61,7 +63,7 @@ export async function playCard(
 }
 
 export async function discardCard(cardId: string): Promise<ActionResult> {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { error } = await supabase.rpc("discard_card", { p_card: cardId });
   if (error) return { ok: false, message: error.message };
   return { ok: true, message: "Card discarded back into the deck." };
@@ -69,7 +71,7 @@ export async function discardCard(cardId: string): Promise<ActionResult> {
 
 // Only the cursed team can clear its own curse (checked in the database).
 export async function clearCurse(curseId: string): Promise<ActionResult> {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data, error } = await supabase.rpc("clear_curse", { p_curse: curseId });
   if (error) return { ok: false, message: error.message };
   return { ok: true, message: data ? String(data) : "Curse cleared." };

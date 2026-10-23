@@ -6,7 +6,7 @@ import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { useServerNow } from "@/components/useServerNow";
 import { loadClocks, loadGameState, loadTeams } from "@/lib/queries";
 import { SPEEDS, type ActionResult, type Speed } from "@/lib/types";
-import { setMySpeed } from "./actions";
+import { setMySpeed } from "./gameActions";
 import { Notice } from "@/components/Notice";
 
 const SPEED_HELP: Record<Speed, string> = {

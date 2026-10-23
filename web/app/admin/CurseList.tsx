@@ -5,7 +5,7 @@ import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadCurses, loadTeams } from "@/lib/queries";
 import type { ActionResult } from "@/lib/types";
-import { adminClearCurse } from "./actions";
+import { adminClearCurse } from "./adminActions";
 import { Notice } from "@/components/Notice";
 
 export function CurseList() {

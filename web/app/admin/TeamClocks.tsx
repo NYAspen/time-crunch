@@ -7,7 +7,7 @@ import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { useServerNow } from "@/components/useServerNow";
 import { loadClocks, loadGameState, loadTeams } from "@/lib/queries";
 import { SPEEDS, type ActionResult, type GameState, type PublicTeam, type TeamClock } from "@/lib/types";
-import { adjustTime, setTeamSpeed, setTeamStatus } from "./actions";
+import { adjustTime, setTeamSpeed, setTeamStatus } from "./adminActions";
 import { Notice } from "@/components/Notice";
 
 export function TeamClocks() {
