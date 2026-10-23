@@ -3,7 +3,15 @@
 import { getUserId, isAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { MIN_CODE_LENGTH, PHASES, teamLoginEmail, type ActionResult, type Phase } from "@/lib/types";
+import {
+  MIN_CODE_LENGTH,
+  PHASES,
+  SPEEDS,
+  teamLoginEmail,
+  type ActionResult,
+  type Phase,
+  type Speed,
+} from "@/lib/types";
 
 // Every action re-checks admin rights on the server. Never trust that the
 // button was only visible to admins.
@@ -55,6 +63,50 @@ export async function setPaused(paused: boolean): Promise<ActionResult> {
   const { error } = await supabase.rpc("admin_set_paused", { paused });
   if (error) return { ok: false, message: error.message };
   return { ok: true, message: paused ? "Game paused." : "Game resumed." };
+}
+
+// ---------------------------------------------------------------------------
+// Time (the database functions check admin rights, settle clocks and log)
+// ---------------------------------------------------------------------------
+
+export async function adjustTime(teamId: string, formData: FormData): Promise<ActionResult> {
+  const minutes = Number(formData.get("minutes"));
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!Number.isFinite(minutes) || minutes === 0) {
+    return { ok: false, message: "Enter a number of minutes (use a minus sign to subtract)." };
+  }
+  if (!reason) return { ok: false, message: "Please give a reason." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_adjust_time", {
+    p_team: teamId,
+    delta_seconds: Math.round(minutes * 60),
+    reason,
+  });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: `${minutes > 0 ? "Added" : "Removed"} ${Math.abs(minutes)} min.` };
+}
+
+export async function setTeamSpeed(teamId: string, speed: Speed): Promise<ActionResult> {
+  if (!SPEEDS.includes(speed)) return { ok: false, message: "Unknown speed." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_speed", { p_team: teamId, new_speed: speed });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: `Speed set to ${speed}×.` };
+}
+
+export async function setTeamStatus(teamId: string, status: "active" | "eliminated"): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_team_status", { p_team: teamId, new_status: status });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: status === "active" ? "Team is back in the game." : "Team eliminated." };
+}
+
+export async function undoTimeEntry(entryId: number): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_reverse_entry", { entry_id: entryId });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: `Undid entry #${entryId}.` };
 }
 
 // ---------------------------------------------------------------------------

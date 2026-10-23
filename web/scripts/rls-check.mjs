@@ -66,6 +66,43 @@ const checks = [
     const { error } = await supabase.from("activity_log").insert({ event_type: "fake" });
     return !!error;
   }],
+  // Stage 2: time
+  ["Read another team's clock", async () => {
+    const { data, error } = await supabase.from("team_clocks").select("team_id").neq("team_id", team.id);
+    return !!error || data.length === 0;
+  }],
+  ["Read another team's time history", async () => {
+    const { data, error } = await supabase.from("time_ledger").select("id").neq("team_id", team.id);
+    return !!error || data.length === 0;
+  }],
+  ["Edit own time balance directly", async () => {
+    const { data, error } = await supabase.from("team_clocks").update({ balance_ms: 99999999 }).eq("team_id", team.id).select();
+    return !!error || data.length === 0;
+  }],
+  ["Change own speed directly (bypassing the log)", async () => {
+    const { data, error } = await supabase.from("teams").update({ speed: 0 }).eq("id", team.id).select();
+    return !!error || data.length === 0;
+  }],
+  ["Give itself time (admin_adjust_time)", async () => {
+    const { error } = await supabase.rpc("admin_adjust_time", { p_team: team.id, delta_seconds: 3600, reason: "hack" });
+    return !!error;
+  }],
+  ["Set a team's speed (admin_set_speed)", async () => {
+    const { error } = await supabase.rpc("admin_set_speed", { p_team: team.id, new_speed: 0 });
+    return !!error;
+  }],
+  ["Revive or eliminate a team (admin_set_team_status)", async () => {
+    const { error } = await supabase.rpc("admin_set_team_status", { p_team: team.id, new_status: "eliminated" });
+    return !!error;
+  }],
+  ["Undo a history entry (admin_reverse_entry)", async () => {
+    const { error } = await supabase.rpc("admin_reverse_entry", { entry_id: 1 });
+    return !!error;
+  }],
+  ["Call an internal helper (_settle_team)", async () => {
+    const { error } = await supabase.rpc("_settle_team", { p_team: team.id });
+    return !!error;
+  }],
 ];
 
 let failures = 0;

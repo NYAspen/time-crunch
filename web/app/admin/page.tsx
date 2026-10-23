@@ -6,6 +6,7 @@ import { isAdmin } from "@/lib/auth";
 import { logout } from "../actions";
 import { ActivityLog } from "./ActivityLog";
 import { PhaseControls } from "./PhaseControls";
+import { TeamClocks } from "./TeamClocks";
 import { TeamManager } from "./TeamManager";
 
 export default function AdminPage() {
@@ -33,6 +34,7 @@ async function AdminView() {
       </header>
       <PhaseBanner />
       <PhaseControls />
+      <TeamClocks />
       <TeamManager />
       <ActivityLog />
     </>

@@ -1,0 +1,193 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { Countdown } from "@/components/Countdown";
+import { TimeHistory } from "@/components/TimeHistory";
+import { useLiveTable } from "@/components/useLiveTable";
+import { useServerNow } from "@/components/useServerNow";
+import { loadClocks, loadGameState, loadLedger, loadTeams } from "@/lib/queries";
+import { SPEEDS, type ActionResult, type GameState, type PublicTeam, type TeamClock } from "@/lib/types";
+import { adjustTime, setTeamSpeed, setTeamStatus, undoTimeEntry } from "./actions";
+
+function Message({ result }: { result: ActionResult }) {
+  if (!result) return null;
+  return (
+    <p className={`rounded-lg p-2 text-sm ${result.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+      {result.message}
+    </p>
+  );
+}
+
+export function TeamClocks() {
+  const { data: game } = useLiveTable("game_state", loadGameState);
+  const { data: teams, refresh: refreshTeams } = useLiveTable("teams", loadTeams);
+  const { data: clocks, error, refresh: refreshClocks } = useLiveTable("team_clocks", loadClocks);
+  const { data: ledger, refresh: refreshLedger } = useLiveTable("time_ledger", loadLedger);
+  const serverNow = useServerNow();
+  const [undoResult, setUndoResult] = useState<ActionResult>(null);
+  const [undoing, startUndo] = useTransition();
+
+  if (error) return <p className="text-red-700">Error: {error}</p>;
+  if (!game || !teams || !clocks || serverNow === null) return <p className="text-gray-500">Loading clocks…</p>;
+
+  const teamNames = Object.fromEntries(teams.map((t) => [t.id, t.name]));
+  // Show the result of an admin action straight away rather than waiting for realtime.
+  const refreshAll = () => {
+    refreshTeams();
+    refreshClocks();
+    refreshLedger();
+  };
+
+  return (
+    <>
+      <section className="space-y-3 rounded-xl border bg-white p-4">
+        <h2 className="text-lg font-semibold">Team time</h2>
+        {teams.length === 0 && <p className="text-gray-500">No teams yet.</p>}
+        <ul className="space-y-2">
+          {teams.map((team) => {
+            const clock = clocks.find((c) => c.team_id === team.id);
+            return clock ? (
+              <ClockRow
+                key={team.id}
+                game={game}
+                team={team}
+                clock={clock}
+                serverNow={serverNow}
+                onChanged={refreshAll}
+              />
+            ) : null;
+          })}
+        </ul>
+      </section>
+
+      <section className="space-y-2 rounded-xl border bg-white p-4">
+        <h2 className="text-lg font-semibold">Time history (latest 100)</h2>
+        <Message result={undoResult} />
+        {ledger && (
+          <TimeHistory
+            entries={ledger}
+            teamNames={teamNames}
+            undoDisabled={undoing}
+            onUndo={(entry) =>
+              startUndo(async () => {
+                setUndoResult(await undoTimeEntry(entry.id));
+                refreshAll();
+              })
+            }
+          />
+        )}
+      </section>
+    </>
+  );
+}
+
+function ClockRow({
+  game,
+  team,
+  clock,
+  serverNow,
+  onChanged,
+}: {
+  game: GameState;
+  team: PublicTeam;
+  clock: TeamClock;
+  serverNow: number;
+  onChanged: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [confirmStatus, setConfirmStatus] = useState(false);
+  const [result, setResult] = useState<ActionResult>(null);
+  const [pending, startTransition] = useTransition();
+
+  const run = (action: () => Promise<ActionResult>) =>
+    startTransition(async () => {
+      setResult(await action());
+      onChanged();
+    });
+  const eliminated = team.status === "eliminated";
+
+  return (
+    <li className={`space-y-2 rounded-lg border p-3 ${team.speed !== 1 && !eliminated ? "border-orange-400 bg-orange-50" : ""}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className={`font-medium ${eliminated ? "text-gray-400 line-through" : ""}`}>{team.name}</span>
+        <div className="flex items-center gap-2">
+          {!eliminated && team.speed !== 1 && (
+            <span className="rounded bg-orange-200 px-1.5 text-sm font-bold text-orange-900">{team.speed}×</span>
+          )}
+          <Countdown game={game} team={team} clock={clock} serverNow={serverNow} size="small" />
+          <button onClick={() => setOpen(!open)} className="rounded border px-2 py-1 text-sm">
+            {open ? "Close" : "Edit"}
+          </button>
+        </div>
+      </div>
+
+      {open && (
+        <div className="space-y-3">
+          <form action={(fd) => run(() => adjustTime(team.id, fd))} className="space-y-2">
+            <div className="flex gap-2">
+              <input
+                name="minutes"
+                type="number"
+                step="any"
+                required
+                placeholder="± minutes"
+                className="w-28 rounded border p-2"
+              />
+              <input name="reason" required placeholder="Reason" className="min-w-0 flex-1 rounded border p-2" />
+            </div>
+            <button disabled={pending} className="w-full rounded bg-gray-800 p-2 text-sm text-white disabled:opacity-50">
+              Add / subtract time
+            </button>
+          </form>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm">Speed:</span>
+            {SPEEDS.map((speed) => (
+              <button
+                key={speed}
+                disabled={pending || speed === team.speed}
+                onClick={() => run(() => setTeamSpeed(team.id, speed))}
+                className={`flex-1 rounded border p-2 text-sm font-bold ${
+                  speed === team.speed ? "bg-gray-900 text-white" : "bg-white"
+                }`}
+              >
+                {speed}×
+              </button>
+            ))}
+          </div>
+
+          {confirmStatus ? (
+            <div className="flex gap-2">
+              <button
+                disabled={pending}
+                onClick={() => {
+                  setConfirmStatus(false);
+                  run(() => setTeamStatus(team.id, eliminated ? "active" : "eliminated"));
+                }}
+                className="flex-1 rounded bg-red-600 p-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                Yes, {eliminated ? "bring back" : "eliminate"} {team.name}
+              </button>
+              <button onClick={() => setConfirmStatus(false)} className="flex-1 rounded border p-2 text-sm">
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmStatus(true)}
+              className="w-full rounded border border-red-300 p-2 text-sm text-red-700"
+            >
+              {eliminated ? "Bring team back into the game" : "Eliminate team by hand"}
+            </button>
+          )}
+          {eliminated && (
+            <p className="text-xs text-gray-500">
+              Tip: add time first. A team brought back with 0 time during Elimination is eliminated again immediately.
+            </p>
+          )}
+        </div>
+      )}
+      <Message result={result} />
+    </li>
+  );
+}

@@ -38,7 +38,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 | Dates | Goal |
 |---|---|
 | Oct 22 | ✅ Stage 1: setup, team identification, shared phase and pause, deployed |
-| Oct 23–25 | Stage 2: team time pools, countdowns, balance history |
+| Oct 22 | ✅ Stage 2: team time pools, countdowns, speed toggle, balance history |
 | Oct 25–27 | Stage 3: shared challenge board |
 | Oct 27–30 | Stage 4: shared card deck and team hands |
 | Oct 30–Nov 1 | Stage 5: team-recorded curses and steals, reset game, full-loop test on phones |
@@ -66,7 +66,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 ### Working defaults (not in the spec; confirm or change)
 | # | Default | Notes |
 |---|---|---|
-| D1 | The game starts in Preparation. One admin action switches **every team** to Elimination at the same server moment. Schedule: Preparation 8–12, lunch 12–1, Elimination 1–5. | Planned for Stage 2: the admin can set the Elimination start time in advance, and the server switches automatically, so no button press is needed at 1:00. |
+| D1 | The game starts in Preparation. One admin action switches **every team** to Elimination at the same server moment. Schedule: Preparation 8–12, lunch 12–1, Elimination 1–5. | The admin presses the button at 1:00. Scheduling the start in advance was dropped. |
 | D2 | Pause, used for lunch or emergencies, freezes every countdown and curse effect, and blocks team actions. No time is charged for paused time. | |
 | D3 | A team at zero during Elimination is marked eliminated once and can no longer act. It can still view the board. | |
 | D4 | The board shows a configurable number of active challenges, starting at 8. | |
@@ -176,9 +176,11 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 
 **Timer design (Stage 2):**
 - Store each team's balance with the server timestamp it was last settled at (the "anchor").
-- Each team also has a `speed` of 0, 1 or 2.
-- While Elimination is running and unpaused: remaining = balance − speed × (now − anchor).
-- Every change (speed change, adjustment, pause, resume or the Elimination start) first settles the balance up to now, then writes a new anchor and a history row.
+- Each team's clock row (`team_clocks`) holds a snapshot: `balance_ms`, `anchor_at`, `speed` (0/1/2) and `running` (Elimination, not paused, team active).
+- Remaining time = `running` ? balance − speed × (now − anchor) : balance. The screen only uses the clock row, never `teams.speed` or `game_state`. Mixing them caused visible jumps (fixed in migration 0004).
+- **Change state first, then settle.** Every action (speed change, status change, pause, resume, phase change) updates `teams` or `game_state`, then calls `_settle_team` / `_settle_all`.
+- Settling charges the time elapsed since the last settle at the **stored** speed and running values, then copies the current state onto the clock row with a new anchor.
+- Time adjustments settle, then add the delta and write a history row.
 - The browser only displays the remaining time, corrected for the phone's clock offset.
 
 **Team identification:**
@@ -214,10 +216,10 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - Deployed to Vercel.
 - Reduced to two phases (migration 0002).
 
-**Stage 2: Time pools and countdowns**
+**Stage 2: Time pools and countdowns ✅**
 - A private team balance and a balance history.
 - Admin corrections: add or subtract time with a reason, or reverse a history entry.
-- The Elimination start applies to all teams at once, either from the admin's button or from a start time set in advance (D1). Pause and resume settle all teams (D2).
+- The Elimination start applies to all teams at once from the admin's button (D1). Pause and resume settle all teams (D2).
 - A live countdown on the team and admin pages, with zero detection that marks a team eliminated only once (D3).
 - A team speed toggle (0×, 1×, 2×): every change is logged, the current speed is visible to all, and the admin can reset it (D13).
 - **Test:** refresh, lock the phone for 5 minutes, pause and resume, and check that two phones show the same time.
@@ -246,9 +248,6 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 
 ## 8. Open questions
 
-- **Stage 2:**
-  - Does each team start with some banked time, or 0?
-  - Is a team with 0 at the Elimination start eliminated immediately?
 - **Stage 3:** does a replacement challenge come from a fixed ordered list or at random?
 - **Stage 4:**
   - Which card types and power-ups exist, and what does each do?
@@ -256,7 +255,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 
 ## 9. Progress tracker
 
-**Current stage:** Stage 1 is complete and deployed. Next is Stage 2 (time).
+**Current stage:** Stage 2 is complete and tested on 2026-10-22. Stage 3 (challenge board) is next.
 
 ### Implemented
 - **Stage 1:**
@@ -269,15 +268,46 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
     - live activity log
   - `web/scripts/rls-check.mjs`.
   - Deployed on Vercel and tested on phones on 2026-10-22.
-  - Two phases only (Preparation and Elimination). Migration `0002_two_phases.sql` must be run in the Supabase SQL Editor.
+  - Two phases only, Preparation and Elimination (migration 0002, run and tested).
+- **Stage 2** (migrations `0003_time.sql` and `0004_clock_snapshot.sql`, both run and tested):
+  - Database:
+    - `team_clocks` (private: own team or admin), with `balance_ms` and `anchor_at`
+    - `teams.speed` (public) and `teams.eliminated_at`
+    - `time_ledger` (balance history)
+  - Database functions:
+    - All time maths runs in the database (`_settle_team`).
+    - Phase change and pause/resume settle every clock first.
+    - `_sweep_eliminations` eliminates each team exactly once and records the exact time it hit zero. It runs after every time-changing action, and browsers trigger it when a countdown on screen reaches 0.
+  - Team page:
+    - live countdown, corrected to the server's clock
+    - 0×/1×/2× speed buttons
+    - the team's own time history
+  - Admin page:
+    - per-team live clocks; any team not at 1× is highlighted
+    - add or subtract time with a reason
+    - set a team's speed
+    - eliminate a team or bring it back
+    - time history with Undo
+  - Public team list shows each team's speed when it isn't 1×.
+  - `rls-check.mjs` has 9 new time checks.
 
 ### Outstanding
-- Run `web/supabase/migrations/0002_two_phases.sql` in Supabase.
 - Stages 2–5 (Tier 1) by Nov 1. Then the playtest, Tier 2 if there is time, and the rehearsal (section 2).
 - Write the real challenge list and card deck in the content format by about Nov 4.
 
 ### Known bugs
-- (none)
+- Fixed 2026-10-22: after a team was brought back, its speed buttons appeared not to work.
+  - The server recorded every tap correctly; the screen didn't update.
+  - Fix:
+    - `useLiveTable` ignores out-of-date replies when reloads overlap.
+    - Team and admin actions reload their data straight away instead of waiting for realtime.
+  - Retested and working.
+- Fixed 2026-10-22: a team reaching 0 was not eliminated.
+  - The browser's `sweep_eliminations` call was never sent, because Supabase requests only run when awaited.
+  - It also never retried when the phone's clock was slightly ahead of the server's.
+  - Fix: the check is awaited and repeats every 2 s while a countdown shows 0.
+  - Remaining limitation: elimination is only detected while some team or admin page is open, or when another time action runs. The recorded elimination time is always the exact moment the time hit zero.
+- Fixed 2026-10-22 (migration 0004): the countdown jumped when switching speed, pausing or resuming. The screen was combining a new speed with an old clock anchor.
 
 ### Decisions log
 - 2026-10-22: Team login is a team pick plus a case-insensitive code of 6+ characters. It was kept even though the spec lists accounts as Tier 3, because it already works and keeps hands private.
@@ -289,8 +319,15 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   Rules from the original brief that the new spec doesn't mention are kept only as working defaults.
 - 2026-10-22: **Only two phases, Preparation and Elimination.** Lunch is a pause. The Setup, Lunch and Ended phases were removed (migration 0002).
 - 2026-10-22: **Reduce admin reliance.**
-  - Teams claim, draw, use, discard and steal cards, and start and clear curses, themselves. The admin only does setup, the Elimination start (which can be scheduled), pause, and corrections.
+  - Teams claim, draw, use, discard and steal cards, and start and clear curses, themselves. The admin only does setup, the Elimination start, pause, and corrections.
+- 2026-10-22: Dropped scheduling the Elimination start in advance (planned as Stage 2b). The admin presses the button at 1:00.
 - 2026-10-22: **Curse effects are handled manually by team-controlled countdown speed: 0×, 1× or 2× (D13).**
   - Curse length varies, because it depends on how long the victim takes to clear it.
-  - While cursed, the victim runs at 2× and the attacker at 0×. In the original brief the victim was at 3×, but 3× is no longer an allowed speed, so this needs confirming.
+  - While cursed, the victim runs at 2× and the attacker at 0×. The original brief had 3×; confirmed as 2×.
   - Automatic siphoning stays in Tier 2.
+- 2026-10-22: Stage 2 rules:
+  - Teams start with 0 banked time.
+  - A team with 0 time when Elimination starts is eliminated immediately.
+  - Teams can change speed at any time (honor system).
+  - A team's balance is private: only the team itself and the admin can see it. Speed is public.
+  - A balance never goes below 0.
