@@ -1,0 +1,7 @@
+name,type,copies,description,range,clearance,effect
+Slow Down,curse,2,The target team's countdown runs at 2x (and yours at 0x) until they clear it.,500 m,Sing a full song in public.,
+Tourist Trap,curse,2,The target team's countdown runs at 2x (and yours at 0x) until they clear it.,1 km,Take a selfie with a stranger.,
+Brain Freeze,curse,1,The target team's countdown runs at 2x (and yours at 0x) until they clear it.,300 m,Eat something frozen.,
+Duplicate,powerup,3,Duplicate another card in your hand.,,,duplicate
+Veto,powerup,2,Block the next curse played on your team. Show this card to the attacker.,,,
+Tourist Trap,curse,2,The target team's countdown runs at 2x (and yours at 0x) until they clear it.,1 km,Take a selfie with a stranger.,

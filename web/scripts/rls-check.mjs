@@ -120,6 +120,35 @@ const checks = [
     const { error } = await supabase.rpc("admin_set_board_size", { new_size: 1 });
     return !!error;
   }],
+  // Stage 4: cards
+  ["See another team's cards or the deck", async () => {
+    const { data, error } = await supabase.from("cards").select("id").or(`holder_team.is.null,holder_team.neq.${team.id}`);
+    return !!error || data.length === 0;
+  }],
+  ["See another team's card draws", async () => {
+    const { data, error } = await supabase.from("card_draws").select("id").neq("team_id", team.id);
+    return !!error || data.length === 0;
+  }],
+  ["Take a card from the deck directly", async () => {
+    const { data, error } = await supabase.from("cards").update({ status: "hand", holder_team: team.id }).eq("status", "deck").select();
+    return !!error || data.length === 0;
+  }],
+  ["Give itself a card draw directly", async () => {
+    const { error } = await supabase.from("card_draws").insert({ team_id: team.id, size: 10 });
+    return !!error;
+  }],
+  ["Give itself a card draw (admin_grant_draw)", async () => {
+    const { error } = await supabase.rpc("admin_grant_draw", { p_team: team.id, p_size: 10 });
+    return !!error;
+  }],
+  ["Move a card (admin_move_card)", async () => {
+    const { error } = await supabase.rpc("admin_move_card", { p_card: "00000000-0000-0000-0000-000000000000", p_team: team.id });
+    return !!error;
+  }],
+  ["Use a card it doesn't hold", async () => {
+    const { error } = await supabase.rpc("use_card", { p_card: "00000000-0000-0000-0000-000000000000", p_target: null });
+    return !!error;
+  }],
 ];
 
 let failures = 0;

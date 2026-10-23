@@ -70,6 +70,9 @@ export function useLiveTable<T>(table: string, load: () => Promise<T>) {
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("online", refresh);
     window.addEventListener(REFRESH_EVENT, refresh);
+    // Safety net: realtime doesn't tell a team when a row stops being visible
+    // to it (e.g. a card leaving its hand), so also reload every 20 s.
+    const poll = setInterval(refresh, 20000);
 
     refresh();
 
@@ -78,6 +81,7 @@ export function useLiveTable<T>(table: string, load: () => Promise<T>) {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", refresh);
       window.removeEventListener(REFRESH_EVENT, refresh);
+      clearInterval(poll);
       supabase.removeChannel(channel);
     };
   }, [table, refresh]);

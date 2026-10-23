@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { ActivityLogEntry, Challenge, GameState, LedgerEntry, PublicTeam, TeamClock } from "@/lib/types";
+import type { ActivityLogEntry, Card, CardDraw, CardType, Challenge, GameState, LedgerEntry, PublicTeam, TeamClock } from "@/lib/types";
 
 // Browser-side reads. RLS decides what each user is allowed to see.
 
@@ -55,6 +55,37 @@ export async function loadChallenges(): Promise<Challenge[]> {
   const { data, error } = await createClient()
     .from("challenges")
     .select("id, title, task, reward_cards, reward_minutes, status, activated_at, claimed_by, claimed_at")
+    .order("created_at");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function loadCardTypes(): Promise<CardType[]> {
+  const { data, error } = await createClient()
+    .from("card_types")
+    .select("id, name, type, description, range_text, clearance, effect")
+    .order("name");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Teams only get the copies they hold (RLS); admins get every copy.
+export async function loadCards(): Promise<Card[]> {
+  const { data, error } = await createClient()
+    .from("cards")
+    .select("id, type_id, status, holder_team, draw_id, is_duplicate")
+    .neq("status", "removed")
+    .order("updated_at");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Teams only get their own draws (RLS); admins get everyone's.
+export async function loadCardDraws(): Promise<CardDraw[]> {
+  const { data, error } = await createClient()
+    .from("card_draws")
+    .select("id, team_id, size, source, status, created_at")
+    .neq("status", "done")
     .order("created_at");
   if (error) throw new Error(error.message);
   return data;

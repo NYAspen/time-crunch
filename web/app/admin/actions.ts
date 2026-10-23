@@ -5,6 +5,8 @@ import { parseTable } from "@/lib/csv";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
+  CARD_EFFECTS,
+  CARD_TYPES,
   MIN_CODE_LENGTH,
   PHASES,
   SPEEDS,
@@ -24,11 +26,15 @@ async function requireAdmin(): Promise<string | null> {
 const NOT_ADMIN: ActionResult = { ok: false, message: "You are not logged in as admin." };
 
 function cleanName(raw: FormDataEntryValue | null) {
-  return String(raw ?? "").trim().replace(/\s+/g, " ");
+  return String(raw ?? "")
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
 function cleanCode(raw: FormDataEntryValue | null) {
-  return String(raw ?? "").trim().toLowerCase();
+  return String(raw ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 function validateName(name: string) {
@@ -132,7 +138,10 @@ function validateChallenge(c: ChallengeFields): string | null {
 export async function importChallenges(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const rows = parseTable(String(formData.get("table") ?? ""));
   if (rows.length === 0) {
-    return { ok: false, message: "Paste a header row (title, task, reward_cards, reward_minutes) and at least one challenge." };
+    return {
+      ok: false,
+      message: "Paste a header row (title, task, reward_cards, reward_minutes) and at least one challenge.",
+    };
   }
   if (!("title" in rows[0])) {
     return { ok: false, message: 'The first row must be the headers, including "title".' };
@@ -199,6 +208,100 @@ export async function setBoardSize(_prev: ActionResult, formData: FormData): Pro
 }
 
 // ---------------------------------------------------------------------------
+// Cards
+// ---------------------------------------------------------------------------
+
+// Expects rows pasted from a spreadsheet with headers:
+// name, type, copies, description, range, clearance, effect
+export async function importCards(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const rows = parseTable(String(formData.get("table") ?? ""));
+  if (rows.length === 0 || !("name" in rows[0])) {
+    return {
+      ok: false,
+      message: "Paste a header row (name, type, copies, description, range, clearance, effect) and at least one card.",
+    };
+  }
+
+  const cards = [];
+  for (const [i, row] of rows.entries()) {
+    const card = {
+      name: (row.name ?? "").trim(),
+      type: (row.type ?? "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z]/g, ""), // "Power-up" -> "powerup"
+      copies: Number(row.copies || 1),
+      description: row.description ?? "",
+      range_text: row.range ?? "",
+      clearance: row.clearance ?? "",
+      effect: (row.effect ?? "").trim().toLowerCase(),
+    };
+    const where = `Row ${i + 2} ("${card.name}")`;
+    if (card.name.length < 1 || card.name.length > 60)
+      return { ok: false, message: `${where}: name must be 1–60 characters. Nothing was imported.` };
+    if (!(CARD_TYPES as readonly string[]).includes(card.type)) {
+      return { ok: false, message: `${where}: type must be one of ${CARD_TYPES.join(", ")}. Nothing was imported.` };
+    }
+    if (!Number.isInteger(card.copies) || card.copies < 1 || card.copies > 50) {
+      return { ok: false, message: `${where}: copies must be a whole number from 1 to 50. Nothing was imported.` };
+    }
+    if (card.effect && !(CARD_EFFECTS as readonly string[]).includes(card.effect)) {
+      return {
+        ok: false,
+        message: `${where}: effect must be blank or one of ${CARD_EFFECTS.join(", ")}. Nothing was imported.`,
+      };
+    }
+    cards.push(card);
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_import_cards", { p_rows: cards });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: `Imported ${cards.length} card type(s), ${data} copies in total.` };
+}
+
+export async function updateCardType(typeId: string, formData: FormData): Promise<ActionResult> {
+  const name = String(formData.get("name") ?? "").trim();
+  if (name.length < 1 || name.length > 60) return { ok: false, message: "Name must be 1–60 characters." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_update_card_type", {
+    p_type: typeId,
+    p_name: name,
+    p_description: String(formData.get("description") ?? ""),
+    p_range: String(formData.get("range") ?? ""),
+    p_clearance: String(formData.get("clearance") ?? ""),
+  });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: "Saved." };
+}
+
+export async function changeCopies(typeId: string, change: number): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_change_copies", { p_type: typeId, p_change: change });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: change > 0 ? "Added a copy to the deck." : "Removed a copy from the deck." };
+}
+
+// teamId null = back to the deck.
+export async function moveCard(cardId: string, teamId: string | null): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_move_card", { p_card: cardId, p_team: teamId });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: teamId ? "Card moved." : "Card returned to the deck." };
+}
+
+export async function grantDraw(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const teamId = String(formData.get("team") ?? "");
+  const size = Number(formData.get("size"));
+  if (!teamId) return { ok: false, message: "Choose a team." };
+  if (!Number.isInteger(size) || size < 1 || size > 10) return { ok: false, message: "Draw size must be 1–10." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_grant_draw", { p_team: teamId, p_size: size });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: `Gave a draw of ${size}.` };
+}
+
+// ---------------------------------------------------------------------------
 // Teams
 // ---------------------------------------------------------------------------
 
@@ -228,9 +331,7 @@ export async function createTeam(_prev: ActionResult, formData: FormData): Promi
   });
   if (userError) return { ok: false, message: `Could not create login: ${userError.message}` };
 
-  const { error: teamError } = await admin
-    .from("teams")
-    .insert({ id: teamId, name, user_id: created.user.id });
+  const { error: teamError } = await admin.from("teams").insert({ id: teamId, name, user_id: created.user.id });
   if (teamError) {
     // Undo the login account so we don't leave an orphan behind.
     await admin.auth.admin.deleteUser(created.user.id);
@@ -249,11 +350,7 @@ export async function renameTeam(teamId: string, formData: FormData): Promise<Ac
   const problem = validateName(name);
   if (problem) return { ok: false, message: problem };
 
-  const { data, error } = await createAdminClient()
-    .from("teams")
-    .update({ name })
-    .eq("id", teamId)
-    .select("id");
+  const { data, error } = await createAdminClient().from("teams").update({ name }).eq("id", teamId).select("id");
   if (error) {
     const message = error.code === "23505" ? `A team called "${name}" already exists.` : error.message;
     return { ok: false, message };

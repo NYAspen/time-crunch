@@ -70,6 +70,43 @@ export type Challenge = {
   claimed_at: string | null;
 };
 
+export const CARD_TYPES = ["curse", "powerup"] as const;
+export type CardTypeKind = (typeof CARD_TYPES)[number];
+export const CARD_TYPE_LABELS: Record<CardTypeKind, string> = { curse: "Curse", powerup: "Power-up" };
+
+// Automatic effects. Cards with no effect are carried out by the players.
+export const CARD_EFFECTS = ["duplicate"] as const;
+export type CardEffect = (typeof CARD_EFFECTS)[number];
+
+export type CardType = {
+  id: string;
+  name: string;
+  type: CardTypeKind;
+  description: string;
+  range_text: string;
+  clearance: string;
+  effect: CardEffect | null;
+};
+
+// One physical copy. Teams only receive their own (RLS); admins see all.
+export type Card = {
+  id: string;
+  type_id: string;
+  status: "deck" | "offered" | "hand" | "removed";
+  holder_team: string | null;
+  draw_id: string | null;
+  is_duplicate: boolean;
+};
+
+export type CardDraw = {
+  id: string;
+  team_id: string;
+  size: number;
+  source: string;
+  status: "pending" | "open" | "done";
+  created_at: string;
+};
+
 export type ActivityLogEntry = {
   id: number;
   created_at: string;

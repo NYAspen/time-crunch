@@ -40,7 +40,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 | Oct 22 | ✅ Stage 1: setup, team identification, shared phase and pause, deployed |
 | Oct 22 | ✅ Stage 2: team time pools, countdowns, speed toggle, balance history |
 | Oct 22 | ✅ Stage 3: shared challenge board |
-| Oct 27–30 | Stage 4: shared card deck and team hands |
+| Oct 22 | ✅ Stage 4: shared card deck and team hands |
 | Oct 30–Nov 1 | Stage 5: team-recorded curses and steals, reset game, full-loop test on phones |
 | **Nov 1** | **Tier 1 complete** |
 | Nov 2–3 | Short field playtest, then fix problems |
@@ -70,10 +70,10 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 | D2 | Pause, used for lunch or emergencies, freezes every countdown and curse effect, and blocks team actions. No time is charged for paused time. | |
 | D3 | A team at zero during Elimination is marked eliminated once and can no longer act. It can still view the board. | |
 | D4 | The board shows **10** active challenges, adjustable by the admin from 1 to 50. Replacements are picked **at random** from the unused pool. | Confirmed. |
-| D5 | Teams self-report claims with no admin approval, and the first claim wins. Teams can claim in either phase and several in a row, but not while the game is paused or after they've been eliminated. The time bonus is added immediately. | Card draws are recorded now and handed out in Stage 4. |
-| D6 | A challenge reward is "draw N": the team sees N cards, keeps 1, and the rest are reshuffled into the pool. | |
-| D7 | A time card adds its minutes to the team's balance and doesn't count toward the hand limit. | |
-| D8 | The hand limit is **7**. A draw that would go over the limit is blocked until the team uses or discards a card. | |
+| D5 | Teams self-report claims with no admin approval, and the first claim wins. Teams can claim in either phase and several in a row, but not while the game is paused or after they've been eliminated. The time bonus is added immediately, and a card draw is queued. | |
+| D6 | A challenge reward is "draw N": the team taps Draw, sees N random cards, and keeps 1. The rest go back into the deck. If the deck has fewer than N cards, the team sees what's left. When only one card is revealed, it goes straight into the hand with no choice step. | Confirmed. Each claim queues a draw; a draw stays open across refreshes. |
+| D7 | Card types for now are **curse** and **power-up** (the card list is still being planned). Time cards aren't included, because challenges give time bonuses directly. | New types or effects can be added later with a small database change. |
+| D8 | **No hand limit for now.** | Revisit once the card list exists. |
 | D9 | While a curse is active during Elimination, the victim's countdown runs at **2×** and the attacker's at **0×**, so the attacker effectively gains 1 min per real minute. | 
 | D10 | A team can have at most one active curse at a time. | |
 | D11 | No curse effects apply during Preparation or while paused. | |
@@ -199,7 +199,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - Challenges and cards are CSV files in `content/`, editable in Google Sheets or Excel.
 - They are loaded through an admin Import screen.
 - **Challenges** (`content/challenges-example.csv`) have the columns `title, task, reward_cards, reward_minutes`. Copy the rows from Google Sheets, headers included, into Admin → Challenges → Import. Imported challenges go into the hidden pool, and the board fills from it at random.
-- Card columns will be defined in Stage 4.
+- **Cards** (`content/cards-example.csv`) have the columns `name, type, copies, description, range, clearance, effect`. `type` is `curse` or `powerup`; `effect` is blank (manual) or `duplicate`. Import them in Admin → Cards → Import cards.
 
 **Fresh test game:** an admin-only "Reset game" clears claims, hands, history and curses, reloads the content, unpauses, and sets the phase back to Preparation.
 
@@ -233,7 +233,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - Atomic team claims with automatic replacement (D5).
 - **Test:** two phones claim the same challenge at the same moment.
 
-**Stage 4: Shared card deck and team hands**
+**Stage 4: Shared card deck and team hands ✅**
 - Card types and individual copies, loaded by CSV import.
 - Draw N, keep 1 (D6).
 - Private hands with a hand limit (D8).
@@ -250,13 +250,14 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 
 ## 8. Open questions
 
-- **Stage 4:**
-  - Which card types and power-ups exist, and what does each do?
-  - Are there veto cards?
+- **Card list (still being planned):**
+  - What is the real deck, and which power-ups need automatic effects?
+  - Are there veto or steal cards?
+  - Is a hand limit needed after all?
 
 ## 9. Progress tracker
 
-**Current stage:** Stage 3 is complete and tested on 2026-10-22. Stage 4 (cards) is next, and is waiting on the card list from the user.
+**Current stage:** Stage 4 is complete and tested on 2026-10-22. Stage 5 (curses, steals, reset game, full-loop test) is next. It is the last Tier 1 stage.
 
 ### Implemented
 - **Stage 1:**
@@ -310,12 +311,33 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - Only Game controls and Team time start open.
   - The time history and activity log show 15 entries at a time, with Show more.
 
+- **Stage 4** (migrations `0006_cards.sql` and `0007_single_card_draw.sql`; run and tested):
+  - Database:
+    - `card_types` (text, range, clearance and an optional automatic `effect`)
+    - `cards` (one row per physical copy: deck, offered, hand or removed)
+    - `card_draws` (pending, open or done)
+  - Claims now queue a draw, and claims made before cards existed were given their draws.
+  - Database functions for teams:
+    - `open_draw` uses `skip locked`, so no copy is shown to two teams
+    - `choose_card` (the rest go back to the deck)
+    - `use_card`: manual effect; the card returns to the deck. The **duplicate** effect is automatic and creates a temporary copy that disappears when used or discarded.
+    - `discard_card`
+  - Team page: a "Your cards" section with waiting draws, keep-one-of-N, and the hand with Use/Discard.
+  - Admin "Cards" section:
+    - import from Sheets
+    - card types with ±1 copies and edit
+    - cards held by each team, with Move (to another team or back to the deck), used for stealing
+    - give a team a draw
+  - Every live section also reloads every 20 s as a safety net, because realtime doesn't report rows disappearing from a team's view.
+  - `scripts/race-draw.mjs` tests simultaneous draws. `rls-check.mjs` has 7 new card checks.
+  - Sample deck: `content/cards-example.csv`.
+
 ### Outstanding
-- Stage 4 must hand out the card draws owed from claims made before cards existed.
 - Stages 2–5 (Tier 1) by Nov 1. Then the playtest, Tier 2 if there is time, and the rehearsal (section 2).
 - Write the real challenge list and card deck in the content format by about Nov 4.
 
 ### Known bugs
+- Fixed 2026-10-22 (migration 0007): a "draw 1" looked like it didn't draw anything, because the team still had to tap "Keep" on the only card. A single revealed card now goes straight into the hand.
 - Fixed 2026-10-22: banked time took several seconds to update after a challenge claim. It only updated when the realtime message arrived. All actions now trigger an immediate reload of every live section.
 - Fixed 2026-10-22: after a team was brought back, its speed buttons appeared not to work.
   - The server recorded every tap correctly; the screen didn't update.
@@ -357,3 +379,9 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - The board holds 10 (admin-adjustable), with replacements drawn at random from the unused pool.
   - Teams can claim several in a row, in either phase, but not while the game is paused.
   - Undoing a claim's time bonus uses Undo in the time history. There is no separate "unclaim".
+- 2026-10-22: Cards (Stage 4):
+  - The card list isn't decided yet. Types for now are curse and power-up, with room to add more.
+  - Effects are manual, except **duplicate** (copy another card in your hand).
+  - Draw N, keep 1. No hand limit for now.
+  - Used and discarded cards return to the deck. Duplicate copies disappear instead.
+  - Stealing is done for now by the admin moving a card between teams.
