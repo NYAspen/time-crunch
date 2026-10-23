@@ -8,6 +8,25 @@ export function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
+// One-line version for the team page header: "Current phase: Preparation" (+ a paused badge).
+export function PhaseTag() {
+  const { data: state } = useLiveTable("game_state", loadGameState);
+  if (!state) return <span className="text-sm text-gray-400">Loading…</span>;
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2 rounded-md bg-blue-600 px-2.5 py-1 text-sm text-white">
+      <span>
+        <span className="opacity-80">Current phase:</span> <b>{PHASE_LABELS[state.phase]}</b>
+      </span>
+      {state.is_paused && (
+        <span className="rounded bg-yellow-300 px-1.5 font-semibold text-yellow-950">
+          ⏸ Paused{state.paused_at ? ` since ${formatTime(state.paused_at)}` : ""}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function PhaseBanner() {
   const { data: state, error } = useLiveTable("game_state", loadGameState);
 

@@ -1,14 +1,12 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { PhaseBanner } from "@/components/PhaseBanner";
-import { TeamList } from "@/components/TeamList";
+import { PhaseTag } from "@/components/PhaseBanner";
 import { getCurrentTeam } from "@/lib/auth";
 import { logout } from "../actions";
-import { CardHand } from "./CardHand";
-import { ChallengeBoard } from "./ChallengeBoard";
 import { CurseBanner } from "./CurseBanner";
 import { TeamClockPanel } from "./TeamClockPanel";
+import { TeamTabs } from "./TeamTabs";
 
 export default function TeamPage() {
   return (
@@ -29,23 +27,17 @@ async function TeamView() {
   return (
     <>
       <header className="flex items-center justify-between">
-        <div>
-          <div className="text-sm text-gray-500">Playing as</div>
+        <div className="space-y-1">
           <h1 className="text-2xl font-bold">{team.name}</h1>
+          <PhaseTag />
         </div>
         <form action={logout}>
           <button className="rounded-lg border bg-white px-3 py-2 text-sm text-gray-700">Log out</button>
         </form>
       </header>
-      <PhaseBanner />
-      <CurseBanner teamId={team.id} />
       <TeamClockPanel teamId={team.id} />
-      <CardHand teamId={team.id} />
-      <ChallengeBoard teamId={team.id} />
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Teams</h2>
-        <TeamList highlightTeamId={team.id} />
-      </section>
+      <CurseBanner teamId={team.id} />
+      <TeamTabs teamId={team.id} />
     </>
   );
 }

@@ -6,6 +6,7 @@ import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadCardDraws, loadCards, loadCardTypes, loadTeams } from "@/lib/queries";
 import type { ActionResult, Card, CardType, PublicTeam } from "@/lib/types";
 import { chooseCard, discardCard, openDraw, playCard } from "./actions";
+import { Notice } from "@/components/Notice";
 
 export function CardHand({ teamId }: { teamId: string }) {
   const { data: cards, error } = useLiveTable("cards", loadCards);
@@ -34,12 +35,7 @@ export function CardHand({ teamId }: { teamId: string }) {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold">Your cards</h2>
-      {result && (
-        <p className={`rounded-lg p-3 ${result.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-          {result.message}
-        </p>
-      )}
+      <Notice result={result} />
 
       {openDrawRow ? (
         <div className="space-y-2 rounded-xl border-2 border-purple-400 bg-purple-50 p-3">

@@ -5,6 +5,7 @@ import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadCurses, loadTeams } from "@/lib/queries";
 import type { ActionResult, Speed } from "@/lib/types";
 import { clearCurse, setMySpeed } from "./actions";
+import { Notice } from "@/components/Notice";
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
@@ -50,11 +51,7 @@ export function CurseBanner({ teamId }: { teamId: string }) {
 
   return (
     <section className="space-y-2">
-      {result && (
-        <p className={`rounded-lg p-3 ${result.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-          {result.message}
-        </p>
-      )}
+      <Notice result={result} />
 
       {onMe && (
         <div className="space-y-2 rounded-xl border-2 border-red-500 bg-red-50 p-4">
@@ -101,7 +98,6 @@ export function CurseBanner({ teamId }: { teamId: string }) {
           {speedStatus(0)}
         </div>
       ))}
-
     </section>
   );
 }

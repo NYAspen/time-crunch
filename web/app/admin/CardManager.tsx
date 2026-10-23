@@ -8,20 +8,12 @@ import { refreshAllLiveTables, useLiveTable, withRefresh } from "@/components/us
 import { loadCardDraws, loadCards, loadCardTypes, loadTeams } from "@/lib/queries";
 import type { ActionResult, Card, CardType, PublicTeam } from "@/lib/types";
 import { changeCopies, deleteAllCards, grantDraw, importCards, moveCard, updateCardType } from "./actions";
+import { Notice } from "@/components/Notice";
 
 const EXAMPLE =
   "name\ttype\tcopies\tdescription\trange\tclearance\teffect\n" +
   "Slow Down\tcurse\t2\tTarget counts down at 2x until cleared\t500 m\tSing in public\t\n" +
   "Copycat\tpowerup\t2\tDuplicate another card in your hand\t\t\tduplicate";
-
-function Message({ result }: { result: ActionResult }) {
-  if (!result) return null;
-  return (
-    <p className={`rounded-lg p-2 text-sm ${result.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-      {result.message}
-    </p>
-  );
-}
 
 export function CardManager() {
   const { data: types, error } = useLiveTable("card_types", loadCardTypes);
@@ -70,7 +62,7 @@ export function CardManager() {
           >
             {importing ? "Importing…" : "Import"}
           </button>
-          <Message result={importResult} />
+          <Notice compact result={importResult} />
         </form>
       </details>
 
@@ -92,7 +84,7 @@ export function CardManager() {
             Give
           </button>
         </form>
-        <Message result={drawResult} />
+        <Notice compact result={drawResult} />
       </details>
 
       <details>
@@ -181,7 +173,7 @@ function HeldCardRow({ card, cardType, teams }: { card: Card; cardType?: CardTyp
           </>
         )}
       </div>
-      <Message result={result} />
+      <Notice compact result={result} />
     </li>
   );
 }
@@ -258,7 +250,7 @@ function CardTypeRow({ cardType, deckCount, heldCount }: { cardType: CardType; d
           </button>
         </form>
       )}
-      <Message result={result} />
+      <Notice compact result={result} />
     </li>
   );
 }

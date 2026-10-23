@@ -8,17 +8,9 @@ import { refreshAllLiveTables, useLiveTable, withRefresh } from "@/components/us
 import { loadChallenges, loadGameState, loadTeams } from "@/lib/queries";
 import type { ActionResult, Challenge } from "@/lib/types";
 import { deleteAllChallenges, importChallenges, setBoardSize, setChallengeStatus, updateChallenge } from "./actions";
+import { Notice } from "@/components/Notice";
 
 const EXAMPLE = "title\ttask\treward_cards\treward_minutes\nBean selfie\tTeam photo reflected in Cloud Gate\t2\t15";
-
-function Message({ result }: { result: ActionResult }) {
-  if (!result) return null;
-  return (
-    <p className={`rounded-lg p-2 text-sm ${result.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-      {result.message}
-    </p>
-  );
-}
 
 export function ChallengeManager() {
   const { data: challenges, error } = useLiveTable("challenges", loadChallenges);
@@ -67,7 +59,7 @@ export function ChallengeManager() {
           Set
         </button>
       </form>
-      <Message result={sizeResult} />
+      <Notice compact result={sizeResult} />
 
       <details className="rounded-lg bg-gray-50 p-3">
         <summary className="font-medium">Import challenges</summary>
@@ -89,7 +81,7 @@ export function ChallengeManager() {
           >
             {importing ? "Importing…" : "Import"}
           </button>
-          <Message result={importResult} />
+          <Notice compact result={importResult} />
         </form>
       </details>
 
@@ -252,7 +244,7 @@ function ChallengeRow({ challenge, onChanged }: { challenge: Challenge; onChange
           )}
         </div>
       )}
-      <Message result={result} />
+      <Notice compact result={result} />
     </li>
   );
 }

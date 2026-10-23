@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useLiveTable } from "@/components/useLiveTable";
 import { loadTeams } from "@/lib/queries";
 import { teamLogin } from "./actions";
+import { Notice } from "@/components/Notice";
 
 export function TeamLoginForm() {
   const { data: teams, error } = useLiveTable("teams", loadTeams);
@@ -39,7 +40,7 @@ export function TeamLoginForm() {
           className="w-full rounded-lg border bg-white p-3"
         />
       </label>
-      {result && !result.ok && <p className="rounded-lg bg-red-100 p-3 text-red-800">{result.message}</p>}
+      {result && !result.ok && <Notice result={result} />}
       <button
         disabled={pending}
         className="w-full rounded-xl bg-blue-600 p-4 text-lg font-semibold text-white disabled:opacity-50"

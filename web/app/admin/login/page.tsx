@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { adminLogin } from "./actions";
+import { Notice } from "@/components/Notice";
 
 export default function AdminLoginPage() {
   const [result, formAction, pending] = useActionState(adminLogin, null);
@@ -16,7 +17,13 @@ export default function AdminLoginPage() {
       <form action={formAction} className="space-y-4">
         <label className="block space-y-1">
           <span className="font-medium">Email</span>
-          <input name="email" type="email" required autoComplete="username" className="w-full rounded-lg border bg-white p-3" />
+          <input
+            name="email"
+            type="email"
+            required
+            autoComplete="username"
+            className="w-full rounded-lg border bg-white p-3"
+          />
         </label>
         <label className="block space-y-1">
           <span className="font-medium">Password</span>
@@ -28,7 +35,7 @@ export default function AdminLoginPage() {
             className="w-full rounded-lg border bg-white p-3"
           />
         </label>
-        {result && !result.ok && <p className="rounded-lg bg-red-100 p-3 text-red-800">{result.message}</p>}
+        {result && !result.ok && <Notice result={result} />}
         <button
           disabled={pending}
           className="w-full rounded-xl bg-gray-900 p-4 text-lg font-semibold text-white disabled:opacity-50"

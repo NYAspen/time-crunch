@@ -21,7 +21,7 @@ export async function claimChallenge(challengeId: string): Promise<ActionResult>
   const { title, minutes, cards } = data as { title: string; minutes: number; cards: number };
   const rewards = [
     minutes > 0 ? `+${minutes} min` : null,
-    cards > 0 ? `a draw of ${cards} card${cards === 1 ? "" : "s"} (open "Your cards" to pick one)` : null,
+    cards > 0 ? `a draw of ${cards} card${cards === 1 ? "" : "s"} (open the Cards tab to draw)` : null,
   ].filter(Boolean);
   return { ok: true, message: `You claimed "${title}"!${rewards.length ? ` ${rewards.join(", ")}.` : ""}` };
 }

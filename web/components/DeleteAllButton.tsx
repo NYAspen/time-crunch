@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import type { ActionResult } from "@/lib/types";
 import { refreshAllLiveTables } from "./useLiveTable";
+import { Notice } from "@/components/Notice";
 
 // A red "Delete all …" button that asks for confirmation first.
 export function DeleteAllButton({
@@ -50,13 +51,7 @@ export function DeleteAllButton({
           {label}
         </button>
       )}
-      {result && (
-        <p
-          className={`rounded-lg p-2 text-sm ${result.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
-        >
-          {result.message}
-        </p>
-      )}
+      <Notice compact result={result} />
     </div>
   );
 }

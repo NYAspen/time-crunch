@@ -12,6 +12,7 @@ import { PhaseControls } from "./PhaseControls";
 import { ResetGame } from "./ResetGame";
 import { TeamClocks } from "./TeamClocks";
 import { TeamManager } from "./TeamManager";
+import { TimeHistorySection } from "./TimeHistorySection";
 
 export default function AdminPage() {
   return (
@@ -43,6 +44,7 @@ async function AdminView() {
       <ChallengeManager />
       <CardManager />
       <TeamManager />
+      <TimeHistorySection />
       <ActivityLog />
       <ResetGame />
     </>

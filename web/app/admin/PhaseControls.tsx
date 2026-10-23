@@ -5,6 +5,7 @@ import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadGameState } from "@/lib/queries";
 import { PHASE_LABELS, PHASES, type ActionResult, type Phase } from "@/lib/types";
 import { setPaused, setPhase } from "./actions";
+import { Notice } from "@/components/Notice";
 
 export function PhaseControls() {
   const { data: state } = useLiveTable("game_state", loadGameState);
@@ -75,11 +76,7 @@ export function PhaseControls() {
         </div>
       )}
 
-      {result && (
-        <p className={`rounded-lg p-3 ${result.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-          {result.message}
-        </p>
-      )}
+      <Notice result={result} />
     </section>
   );
 }

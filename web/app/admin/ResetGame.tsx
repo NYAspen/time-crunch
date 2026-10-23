@@ -5,6 +5,7 @@ import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { refreshAllLiveTables } from "@/components/useLiveTable";
 import type { ActionResult } from "@/lib/types";
 import { resetGame } from "./actions";
+import { Notice } from "@/components/Notice";
 
 export function ResetGame() {
   const [deleteTeams, setDeleteTeams] = useState(false);
@@ -13,7 +14,7 @@ export function ResetGame() {
   const [pending, startTransition] = useTransition();
 
   return (
-    <CollapsibleSection title="Reset game">
+    <CollapsibleSection title="Reset game" danger>
       <p className="text-sm text-gray-700">
         Starts a fresh game. Clears all time, time history, claims, hands, draws, curses and the activity log. Every
         challenge and card goes back into the pool and deck, and the game returns to <b>Preparation</b>, unpaused, with
@@ -47,13 +48,7 @@ export function ResetGame() {
       >
         {pending ? "Resetting…" : "Reset game"}
       </button>
-      {result && (
-        <p
-          className={`rounded-lg p-2 text-sm ${result.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
-        >
-          {result.message}
-        </p>
-      )}
+      <Notice compact result={result} />
     </CollapsibleSection>
   );
 }

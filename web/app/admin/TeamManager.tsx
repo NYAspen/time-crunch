@@ -6,15 +6,7 @@ import { refreshAllLiveTables, useLiveTable, withRefresh } from "@/components/us
 import { loadTeams } from "@/lib/queries";
 import { MIN_CODE_LENGTH, type ActionResult, type PublicTeam } from "@/lib/types";
 import { createTeam, deleteTeam, renameTeam, resetTeamCode } from "./actions";
-
-function Message({ result }: { result: ActionResult }) {
-  if (!result) return null;
-  return (
-    <p className={`rounded-lg p-2 text-sm ${result.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-      {result.message}
-    </p>
-  );
-}
+import { Notice } from "@/components/Notice";
 
 export function TeamManager() {
   const { data: teams, error } = useLiveTable("teams", loadTeams);
@@ -46,7 +38,7 @@ export function TeamManager() {
         >
           {creating ? "Creating…" : "Create team"}
         </button>
-        <Message result={createResult} />
+        <Notice compact result={createResult} />
       </form>
 
       {error && <p className="text-red-700">Error: {error}</p>}
@@ -135,7 +127,7 @@ function TeamRow({ team }: { team: PublicTeam }) {
           )}
         </div>
       )}
-      <Message result={result} />
+      <Notice compact result={result} />
     </li>
   );
 }

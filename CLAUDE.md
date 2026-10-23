@@ -189,6 +189,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - The admin is a Supabase user listed in the `admins` table.
 
 **Live UI:** `components/useLiveTable.ts` reloads data on Realtime changes, when the tab becomes visible again, and when the phone reconnects.
+- **Rule:** show every action's result with `components/Notice.tsx` (green or red, fades after 5 s, or 8 s for errors, and has an × to close). Don't write one-off message boxes.
 - **Rule:** after any action, call `refreshAllLiveTables()`, or wrap form actions in `withRefresh(...)`. Every section then updates immediately; Supabase's realtime messages can take a few seconds and are only a backup.
 
 **Migrations:**
@@ -268,7 +269,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 
 ## 9. Progress tracker
 
-**Current stage:** Stage 5 is complete and tested on 2026-10-23. Next come UI adjustments requested by the user, then the full-loop test on several phones and a README. It is the last Tier 1 stage.
+**Current stage:** Tier 1 is complete (Stages 1–5), and the first round of UI adjustments was done on 2026-10-23. Next come the full-loop test on several phones and a README. It is the last Tier 1 stage.
 
 ### Implemented
 - **Stage 1:**
@@ -355,8 +356,19 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - Bulk SQL statements use `where true`, because Supabase blocks UPDATE/DELETE without a WHERE clause.
   - `rls-check.mjs` now has 34 checks.
 
+- **UI adjustments (2026-10-23):**
+  - Messages use `components/Notice.tsx`: they fade after 5 s (8 s for errors) and have an × to close.
+  - Team page is mobile-first:
+    - header: team name with a blue "Current phase" tag, plus a paused badge
+    - countdown at the top, then a compact "Countdown speed" box
+    - curse banner
+    - sticky tabs: **Challenges | Cards | Teams**. The Cards tab shows a count of waiting draws, and the team's time history is a small link at the bottom of the Teams tab.
+  - Admin page:
+    - Reset game section is red (`CollapsibleSection danger`)
+    - Time history is its own section, just above the Activity log
+    - home and admin pages keep the full phase banner
+
 ### Outstanding
-- UI adjustments (the user will specify them).
 - Full-loop test on several phones.
 - README with setup instructions for future seasons.
 - Stages 2–5 (Tier 1) by Nov 1. Then the playtest, Tier 2 if there is time, and the rehearsal (section 2).

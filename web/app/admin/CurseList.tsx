@@ -6,6 +6,7 @@ import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadCurses, loadTeams } from "@/lib/queries";
 import type { ActionResult } from "@/lib/types";
 import { adminClearCurse } from "./actions";
+import { Notice } from "@/components/Notice";
 
 export function CurseList() {
   const { data: curses } = useLiveTable("curses", loadCurses);
@@ -59,13 +60,7 @@ export function CurseList() {
           </li>
         ))}
       </ul>
-      {result && (
-        <p
-          className={`rounded-lg p-2 text-sm ${result.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
-        >
-          {result.message}
-        </p>
-      )}
+      <Notice compact result={result} />
     </CollapsibleSection>
   );
 }

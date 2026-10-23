@@ -3,77 +3,45 @@
 import { useState, useTransition } from "react";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { Countdown } from "@/components/Countdown";
-import { TimeHistory } from "@/components/TimeHistory";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { useServerNow } from "@/components/useServerNow";
-import { loadClocks, loadGameState, loadLedger, loadTeams } from "@/lib/queries";
+import { loadClocks, loadGameState, loadTeams } from "@/lib/queries";
 import { SPEEDS, type ActionResult, type GameState, type PublicTeam, type TeamClock } from "@/lib/types";
-import { adjustTime, setTeamSpeed, setTeamStatus, undoTimeEntry } from "./actions";
-
-function Message({ result }: { result: ActionResult }) {
-  if (!result) return null;
-  return (
-    <p className={`rounded-lg p-2 text-sm ${result.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-      {result.message}
-    </p>
-  );
-}
+import { adjustTime, setTeamSpeed, setTeamStatus } from "./actions";
+import { Notice } from "@/components/Notice";
 
 export function TeamClocks() {
   const { data: game } = useLiveTable("game_state", loadGameState);
   const { data: teams } = useLiveTable("teams", loadTeams);
   const { data: clocks, error } = useLiveTable("team_clocks", loadClocks);
-  const { data: ledger } = useLiveTable("time_ledger", loadLedger);
   const serverNow = useServerNow();
-  const [undoResult, setUndoResult] = useState<ActionResult>(null);
-  const [undoing, startUndo] = useTransition();
 
   if (error) return <p className="text-red-700">Error: {error}</p>;
   if (!game || !teams || !clocks || serverNow === null) return <p className="text-gray-500">Loading clocks…</p>;
 
-  const teamNames = Object.fromEntries(teams.map((t) => [t.id, t.name]));
   // Show the result of an admin action straight away rather than waiting for realtime.
   const refreshAll = refreshAllLiveTables;
   const activeCount = teams.filter((t) => t.status === "active").length;
 
   return (
-    <>
-      <CollapsibleSection title="Team time" summary={`${activeCount} active`} defaultOpen>
-        {teams.length === 0 && <p className="text-gray-500">No teams yet.</p>}
-        <ul className="space-y-2">
-          {teams.map((team) => {
-            const clock = clocks.find((c) => c.team_id === team.id);
-            return clock ? (
-              <ClockRow
-                key={team.id}
-                game={game}
-                team={team}
-                clock={clock}
-                serverNow={serverNow}
-                onChanged={refreshAll}
-              />
-            ) : null;
-          })}
-        </ul>
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Time history" summary="newest first">
-        <Message result={undoResult} />
-        {ledger && (
-          <TimeHistory
-            entries={ledger}
-            teamNames={teamNames}
-            undoDisabled={undoing}
-            onUndo={(entry) =>
-              startUndo(async () => {
-                setUndoResult(await undoTimeEntry(entry.id));
-                refreshAll();
-              })
-            }
-          />
-        )}
-      </CollapsibleSection>
-    </>
+    <CollapsibleSection title="Team time" summary={`${activeCount} active`} defaultOpen>
+      {teams.length === 0 && <p className="text-gray-500">No teams yet.</p>}
+      <ul className="space-y-2">
+        {teams.map((team) => {
+          const clock = clocks.find((c) => c.team_id === team.id);
+          return clock ? (
+            <ClockRow
+              key={team.id}
+              game={game}
+              team={team}
+              clock={clock}
+              serverNow={serverNow}
+              onChanged={refreshAll}
+            />
+          ) : null;
+        })}
+      </ul>
+    </CollapsibleSection>
   );
 }
 
@@ -188,7 +156,7 @@ function ClockRow({
           )}
         </div>
       )}
-      <Message result={result} />
+      <Notice compact result={result} />
     </li>
   );
 }

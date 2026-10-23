@@ -6,6 +6,7 @@ import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadChallenges, loadGameState, loadTeams } from "@/lib/queries";
 import type { ActionResult, Challenge } from "@/lib/types";
 import { claimChallenge } from "./actions";
+import { Notice } from "@/components/Notice";
 
 export function ChallengeBoard({ teamId }: { teamId: string }) {
   const { data: challenges, error } = useLiveTable("challenges", loadChallenges);
@@ -28,14 +29,11 @@ export function ChallengeBoard({ teamId }: { teamId: string }) {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold">Challenge board</h2>
 
-      {result && (
-        <p className={`rounded-lg p-3 ${result.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-          {result.message}
-        </p>
+      <Notice result={result} />
+      {game.is_paused && (
+        <p className="text-sm text-gray-600">The game is paused. Claims open again when it resumes.</p>
       )}
-      {game.is_paused && <p className="text-sm text-gray-600">The game is paused. Claims open again when it resumes.</p>}
       {active.length === 0 && <p className="text-gray-500">No challenges on the board right now.</p>}
 
       <ul className="space-y-2">
@@ -104,7 +102,11 @@ function ChallengeCard({
             >
               {pending ? "Claiming…" : "Yes, claim it"}
             </button>
-            <button disabled={pending} onClick={() => setConfirming(false)} className="flex-1 rounded-lg border bg-white p-3">
+            <button
+              disabled={pending}
+              onClick={() => setConfirming(false)}
+              className="flex-1 rounded-lg border bg-white p-3"
+            >
               Cancel
             </button>
           </div>
