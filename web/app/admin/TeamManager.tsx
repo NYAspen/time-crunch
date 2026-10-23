@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { useLiveTable } from "@/components/useLiveTable";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { refreshAllLiveTables, useLiveTable, withRefresh } from "@/components/useLiveTable";
 import { loadTeams } from "@/lib/queries";
 import { MIN_CODE_LENGTH, type ActionResult, type PublicTeam } from "@/lib/types";
 import { createTeam, deleteTeam, renameTeam, resetTeamCode } from "./actions";
@@ -17,15 +18,19 @@ function Message({ result }: { result: ActionResult }) {
 
 export function TeamManager() {
   const { data: teams, error } = useLiveTable("teams", loadTeams);
-  const [createResult, createAction, creating] = useActionState(createTeam, null);
+  const [createResult, createAction, creating] = useActionState(withRefresh(createTeam), null);
 
   return (
-    <section className="space-y-3 rounded-xl border bg-white p-4">
-      <h2 className="text-lg font-semibold">Teams</h2>
-
+    <CollapsibleSection title="Team logins" summary={teams ? `${teams.length} teams` : undefined}>
       <form action={createAction} className="space-y-2 rounded-lg bg-gray-50 p-3">
         <div className="font-medium">Add a team</div>
-        <input name="name" placeholder="Team name" required maxLength={40} className="w-full rounded-lg border bg-white p-2" />
+        <input
+          name="name"
+          placeholder="Team name"
+          required
+          maxLength={40}
+          className="w-full rounded-lg border bg-white p-2"
+        />
         <input
           name="code"
           placeholder={`Secret code (${MIN_CODE_LENGTH}+ characters)`}
@@ -35,7 +40,10 @@ export function TeamManager() {
           autoComplete="off"
           className="w-full rounded-lg border bg-white p-2"
         />
-        <button disabled={creating} className="w-full rounded-lg bg-blue-600 p-2 font-semibold text-white disabled:opacity-50">
+        <button
+          disabled={creating}
+          className="w-full rounded-lg bg-blue-600 p-2 font-semibold text-white disabled:opacity-50"
+        >
           {creating ? "Creating…" : "Create team"}
         </button>
         <Message result={createResult} />
@@ -44,9 +52,11 @@ export function TeamManager() {
       {error && <p className="text-red-700">Error: {error}</p>}
       {teams?.length === 0 && <p className="text-gray-500">No teams yet.</p>}
       <ul className="space-y-2">
-        {teams?.map((team) => <TeamRow key={team.id} team={team} />)}
+        {teams?.map((team) => (
+          <TeamRow key={team.id} team={team} />
+        ))}
       </ul>
-    </section>
+    </CollapsibleSection>
   );
 }
 
@@ -57,7 +67,10 @@ function TeamRow({ team }: { team: PublicTeam }) {
   const [pending, startTransition] = useTransition();
 
   const run = (action: () => Promise<ActionResult>) =>
-    startTransition(async () => setResult(await action()));
+    startTransition(async () => {
+      setResult(await action());
+      refreshAllLiveTables();
+    });
 
   return (
     <li className="space-y-2 rounded-lg border p-3">
@@ -74,7 +87,13 @@ function TeamRow({ team }: { team: PublicTeam }) {
       {editing && (
         <div className="space-y-2">
           <form action={(fd) => run(() => renameTeam(team.id, fd))} className="flex gap-2">
-            <input name="name" defaultValue={team.name} required maxLength={40} className="min-w-0 flex-1 rounded border p-2" />
+            <input
+              name="name"
+              defaultValue={team.name}
+              required
+              maxLength={40}
+              className="min-w-0 flex-1 rounded border p-2"
+            />
             <button disabled={pending} className="rounded bg-gray-800 px-3 text-sm text-white disabled:opacity-50">
               Rename
             </button>
@@ -107,7 +126,10 @@ function TeamRow({ team }: { team: PublicTeam }) {
               </button>
             </div>
           ) : (
-            <button onClick={() => setConfirmDelete(true)} className="w-full rounded border border-red-300 p-2 text-sm text-red-700">
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="w-full rounded border border-red-300 p-2 text-sm text-red-700"
+            >
               Delete team
             </button>
           )}

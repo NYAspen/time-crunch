@@ -39,7 +39,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 |---|---|
 | Oct 22 | ✅ Stage 1: setup, team identification, shared phase and pause, deployed |
 | Oct 22 | ✅ Stage 2: team time pools, countdowns, speed toggle, balance history |
-| Oct 25–27 | Stage 3: shared challenge board |
+| Oct 22 | ✅ Stage 3: shared challenge board |
 | Oct 27–30 | Stage 4: shared card deck and team hands |
 | Oct 30–Nov 1 | Stage 5: team-recorded curses and steals, reset game, full-loop test on phones |
 | **Nov 1** | **Tier 1 complete** |
@@ -58,7 +58,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - **Elimination** (after lunch): countdowns run.
   - Lunch is not a phase. The game is **paused** over lunch.
 - **Time:** time can be added and subtracted, the game can be paused and resumed, and a team that reaches zero is identified.
-- **Challenges:** there is a shared board. Each challenge has a reward and a place where it can be completed. A completed challenge is claimed, recorded against the claiming team, and replaced. Duplicate rewards must be prevented.
+- **Challenges:** there is a shared board. Each challenge has a reward of **card draws plus a time bonus**. (The spec's "where it can be completed" was removed on 2026-10-22.) A completed challenge is claimed, recorded against the claiming team, and replaced. Duplicate rewards must be prevented.
 - **Cards:** there is one common pool of individual copies of **time cards, curses and power-ups**. If the deck has two copies of a curse, only those two can be drawn until one returns to the pool. A curse shows its **range** and **clearance condition**. Each team has a private hand with an inventory limit.
 - **Curses and siphoning:** an active curse transfers time from the victim to the attacker, and the victim also suffers an extra drain. **Curses travel with the team holding them**: a cursed team stays cursed wherever it goes until it completes the clearance condition. Power-ups may change rates, for example by doubling them.
 - **Range:** a card can only be used when the attacker is within the card's range of the target.
@@ -69,8 +69,8 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 | D1 | The game starts in Preparation. One admin action switches **every team** to Elimination at the same server moment. Schedule: Preparation 8–12, lunch 12–1, Elimination 1–5. | The admin presses the button at 1:00. Scheduling the start in advance was dropped. |
 | D2 | Pause, used for lunch or emergencies, freezes every countdown and curse effect, and blocks team actions. No time is charged for paused time. | |
 | D3 | A team at zero during Elimination is marked eliminated once and can no longer act. It can still view the board. | |
-| D4 | The board shows a configurable number of active challenges, starting at 8. | |
-| D5 | Teams self-report claims. No admin approval; the first claim wins. | |
+| D4 | The board shows **10** active challenges, adjustable by the admin from 1 to 50. Replacements are picked **at random** from the unused pool. | Confirmed. |
+| D5 | Teams self-report claims with no admin approval, and the first claim wins. Teams can claim in either phase and several in a row, but not while the game is paused or after they've been eliminated. The time bonus is added immediately. | Card draws are recorded now and handed out in Stage 4. |
 | D6 | A challenge reward is "draw N": the team sees N cards, keeps 1, and the rest are reshuffled into the pool. | |
 | D7 | A time card adds its minutes to the team's balance and doesn't count toward the hand limit. | |
 | D8 | The hand limit is **7**. A draw that would go over the limit is blocked until the team uses or discards a card. | |
@@ -98,7 +98,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - State survives refresh and closing the page, because the server owns the time.
 
 **2. Shared challenge board**
-- Display the current challenges, their rewards and where each can be completed.
+- Display the current challenges and their rewards (card draws and a time bonus).
 - Teams claim challenges themselves (D5). Each claim is recorded against the team, and the challenge is replaced automatically.
 - Prevent duplicate rewards: when two teams claim at the same moment, only one wins.
 - Organisers can easily load and update challenge content (section 6, Content).
@@ -188,6 +188,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - The admin is a Supabase user listed in the `admins` table.
 
 **Live UI:** `components/useLiveTable.ts` reloads data on Realtime changes, when the tab becomes visible again, and when the phone reconnects.
+- **Rule:** after any action, call `refreshAllLiveTables()`, or wrap form actions in `withRefresh(...)`. Every section then updates immediately; Supabase's realtime messages can take a few seconds and are only a backup.
 
 **Migrations:**
 - These are numbered SQL files in `web/supabase/migrations/`.
@@ -197,7 +198,8 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 **Content:**
 - Challenges and cards are CSV files in `content/`, editable in Google Sheets or Excel.
 - They are loaded through an admin Import screen.
-- The columns will be defined in Stages 3 and 4.
+- **Challenges** (`content/challenges-example.csv`) have the columns `title, task, reward_cards, reward_minutes`. Copy the rows from Google Sheets, headers included, into Admin → Challenges → Import. Imported challenges go into the hidden pool, and the board fills from it at random.
+- Card columns will be defined in Stage 4.
 
 **Fresh test game:** an admin-only "Reset game" clears claims, hands, history and curses, reloads the content, unpauses, and sets the phase back to Preparation.
 
@@ -224,8 +226,8 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - A team speed toggle (0×, 1×, 2×): every change is logged, the current speed is visible to all, and the admin can reset it (D13).
 - **Test:** refresh, lock the phone for 5 minutes, pause and resume, and check that two phones show the same time.
 
-**Stage 3: Shared challenge board**
-- Challenges with a title, task, location, reward and status.
+**Stage 3: Shared challenge board ✅**
+- Challenges with a title, task, rewards (cards and minutes) and a status (pool, active, claimed or retired).
 - CSV import and admin editing.
 - A configurable number of active challenges (D4).
 - Atomic team claims with automatic replacement (D5).
@@ -248,14 +250,13 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 
 ## 8. Open questions
 
-- **Stage 3:** does a replacement challenge come from a fixed ordered list or at random?
 - **Stage 4:**
   - Which card types and power-ups exist, and what does each do?
   - Are there veto cards?
 
 ## 9. Progress tracker
 
-**Current stage:** Stage 2 is complete and tested on 2026-10-22. Stage 3 (challenge board) is next.
+**Current stage:** Stage 3 is complete and tested on 2026-10-22. Stage 4 (cards) is next, and is waiting on the card list from the user.
 
 ### Implemented
 - **Stage 1:**
@@ -291,11 +292,31 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - Public team list shows each team's speed when it isn't 1×.
   - `rls-check.mjs` has 9 new time checks.
 
+- **Stage 3** (migration `0005_challenges.sql`; run and tested):
+  - The `challenges` table (pool → active → claimed, plus retired) and `game_state.board_size` (default 10).
+  - The `claim_challenge` function:
+    - row lock, so the first claim wins
+    - adds the time bonus to the history
+    - refills the board at random (advisory lock, so it can't overfill).
+  - Team page: board with a Claim button and confirmation, plus a list of claimed challenges.
+  - Admin page:
+    - board size
+    - paste-from-Sheets import
+    - edit, remove or restore challenges
+    - pool and claimed lists.
+  - `scripts/race-claim.mjs` tests simultaneous claims and double-taps. `rls-check.mjs` has 4 new challenge checks.
+- **Admin page tidy-up:**
+  - Every section is collapsible (`components/CollapsibleSection.tsx`), with a status summary.
+  - Only Game controls and Team time start open.
+  - The time history and activity log show 15 entries at a time, with Show more.
+
 ### Outstanding
+- Stage 4 must hand out the card draws owed from claims made before cards existed.
 - Stages 2–5 (Tier 1) by Nov 1. Then the playtest, Tier 2 if there is time, and the rehearsal (section 2).
 - Write the real challenge list and card deck in the content format by about Nov 4.
 
 ### Known bugs
+- Fixed 2026-10-22: banked time took several seconds to update after a challenge claim. It only updated when the realtime message arrived. All actions now trigger an immediate reload of every live section.
 - Fixed 2026-10-22: after a team was brought back, its speed buttons appeared not to work.
   - The server recorded every tap correctly; the screen didn't update.
   - Fix:
@@ -331,3 +352,8 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - Teams can change speed at any time (honor system).
   - A team's balance is private: only the team itself and the admin can see it. Speed is public.
   - A balance never goes below 0.
+- 2026-10-22: Challenges:
+  - They have no location. Rewards are cards plus a time bonus.
+  - The board holds 10 (admin-adjustable), with replacements drawn at random from the unused pool.
+  - Teams can claim several in a row, in either phase, but not while the game is paused.
+  - Undoing a claim's time bonus uses Undo in the time history. There is no separate "unclaim".

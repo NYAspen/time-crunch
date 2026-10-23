@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Countdown } from "@/components/Countdown";
 import { TimeHistory } from "@/components/TimeHistory";
-import { useLiveTable } from "@/components/useLiveTable";
+import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { useServerNow } from "@/components/useServerNow";
 import { loadClocks, loadGameState, loadLedger, loadTeams } from "@/lib/queries";
 import { SPEEDS, type ActionResult, type Speed } from "@/lib/types";
@@ -17,9 +17,9 @@ const SPEED_HELP: Record<Speed, string> = {
 
 export function TeamClockPanel({ teamId }: { teamId: string }) {
   const { data: game } = useLiveTable("game_state", loadGameState);
-  const { data: teams, refresh: refreshTeams } = useLiveTable("teams", loadTeams);
-  const { data: clocks, error, refresh: refreshClocks } = useLiveTable("team_clocks", loadClocks);
-  const { data: ledger, refresh: refreshLedger } = useLiveTable("time_ledger", loadLedger);
+  const { data: teams } = useLiveTable("teams", loadTeams);
+  const { data: clocks, error } = useLiveTable("team_clocks", loadClocks);
+  const { data: ledger } = useLiveTable("time_ledger", loadLedger);
   const serverNow = useServerNow();
   const [result, setResult] = useState<ActionResult>(null);
   const [pending, startTransition] = useTransition();
@@ -36,9 +36,7 @@ export function TeamClockPanel({ teamId }: { teamId: string }) {
     startTransition(async () => {
       setResult(await setMySpeed(speed));
       // Show the change straight away rather than waiting for realtime.
-      refreshTeams();
-      refreshClocks();
-      refreshLedger();
+      refreshAllLiveTables();
     });
 
   return (

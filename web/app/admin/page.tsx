@@ -5,6 +5,7 @@ import { PhaseBanner } from "@/components/PhaseBanner";
 import { isAdmin } from "@/lib/auth";
 import { logout } from "../actions";
 import { ActivityLog } from "./ActivityLog";
+import { ChallengeManager } from "./ChallengeManager";
 import { PhaseControls } from "./PhaseControls";
 import { TeamClocks } from "./TeamClocks";
 import { TeamManager } from "./TeamManager";
@@ -35,6 +36,7 @@ async function AdminView() {
       <PhaseBanner />
       <PhaseControls />
       <TeamClocks />
+      <ChallengeManager />
       <TeamManager />
       <ActivityLog />
     </>

@@ -5,6 +5,7 @@ import { PhaseBanner } from "@/components/PhaseBanner";
 import { TeamList } from "@/components/TeamList";
 import { getCurrentTeam } from "@/lib/auth";
 import { logout } from "../actions";
+import { ChallengeBoard } from "./ChallengeBoard";
 import { TeamClockPanel } from "./TeamClockPanel";
 
 export default function TeamPage() {
@@ -36,6 +37,7 @@ async function TeamView() {
       </header>
       <PhaseBanner />
       <TeamClockPanel teamId={team.id} />
+      <ChallengeBoard teamId={team.id} />
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Teams</h2>
         <TeamList highlightTeamId={team.id} />

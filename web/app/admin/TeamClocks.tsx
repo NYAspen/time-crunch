@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { Countdown } from "@/components/Countdown";
 import { TimeHistory } from "@/components/TimeHistory";
-import { useLiveTable } from "@/components/useLiveTable";
+import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { useServerNow } from "@/components/useServerNow";
 import { loadClocks, loadGameState, loadLedger, loadTeams } from "@/lib/queries";
 import { SPEEDS, type ActionResult, type GameState, type PublicTeam, type TeamClock } from "@/lib/types";
@@ -20,9 +21,9 @@ function Message({ result }: { result: ActionResult }) {
 
 export function TeamClocks() {
   const { data: game } = useLiveTable("game_state", loadGameState);
-  const { data: teams, refresh: refreshTeams } = useLiveTable("teams", loadTeams);
-  const { data: clocks, error, refresh: refreshClocks } = useLiveTable("team_clocks", loadClocks);
-  const { data: ledger, refresh: refreshLedger } = useLiveTable("time_ledger", loadLedger);
+  const { data: teams } = useLiveTable("teams", loadTeams);
+  const { data: clocks, error } = useLiveTable("team_clocks", loadClocks);
+  const { data: ledger } = useLiveTable("time_ledger", loadLedger);
   const serverNow = useServerNow();
   const [undoResult, setUndoResult] = useState<ActionResult>(null);
   const [undoing, startUndo] = useTransition();
@@ -32,16 +33,12 @@ export function TeamClocks() {
 
   const teamNames = Object.fromEntries(teams.map((t) => [t.id, t.name]));
   // Show the result of an admin action straight away rather than waiting for realtime.
-  const refreshAll = () => {
-    refreshTeams();
-    refreshClocks();
-    refreshLedger();
-  };
+  const refreshAll = refreshAllLiveTables;
+  const activeCount = teams.filter((t) => t.status === "active").length;
 
   return (
     <>
-      <section className="space-y-3 rounded-xl border bg-white p-4">
-        <h2 className="text-lg font-semibold">Team time</h2>
+      <CollapsibleSection title="Team time" summary={`${activeCount} active`} defaultOpen>
         {teams.length === 0 && <p className="text-gray-500">No teams yet.</p>}
         <ul className="space-y-2">
           {teams.map((team) => {
@@ -58,10 +55,9 @@ export function TeamClocks() {
             ) : null;
           })}
         </ul>
-      </section>
+      </CollapsibleSection>
 
-      <section className="space-y-2 rounded-xl border bg-white p-4">
-        <h2 className="text-lg font-semibold">Time history (latest 100)</h2>
+      <CollapsibleSection title="Time history" summary="newest first">
         <Message result={undoResult} />
         {ledger && (
           <TimeHistory
@@ -76,7 +72,7 @@ export function TeamClocks() {
             }
           />
         )}
-      </section>
+      </CollapsibleSection>
     </>
   );
 }
@@ -107,7 +103,9 @@ function ClockRow({
   const eliminated = team.status === "eliminated";
 
   return (
-    <li className={`space-y-2 rounded-lg border p-3 ${team.speed !== 1 && !eliminated ? "border-orange-400 bg-orange-50" : ""}`}>
+    <li
+      className={`space-y-2 rounded-lg border p-3 ${team.speed !== 1 && !eliminated ? "border-orange-400 bg-orange-50" : ""}`}
+    >
       <div className="flex items-center justify-between gap-2">
         <span className={`font-medium ${eliminated ? "text-gray-400 line-through" : ""}`}>{team.name}</span>
         <div className="flex items-center gap-2">
@@ -135,7 +133,10 @@ function ClockRow({
               />
               <input name="reason" required placeholder="Reason" className="min-w-0 flex-1 rounded border p-2" />
             </div>
-            <button disabled={pending} className="w-full rounded bg-gray-800 p-2 text-sm text-white disabled:opacity-50">
+            <button
+              disabled={pending}
+              className="w-full rounded bg-gray-800 p-2 text-sm text-white disabled:opacity-50"
+            >
               Add / subtract time
             </button>
           </form>

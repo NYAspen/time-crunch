@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { ActivityLogEntry, GameState, LedgerEntry, PublicTeam, TeamClock } from "@/lib/types";
+import type { ActivityLogEntry, Challenge, GameState, LedgerEntry, PublicTeam, TeamClock } from "@/lib/types";
 
 // Browser-side reads. RLS decides what each user is allowed to see.
 
@@ -46,6 +46,16 @@ export async function loadActivityLog(): Promise<ActivityLogEntry[]> {
     .select("id, created_at, team_id, event_type, details")
     .order("created_at", { ascending: false })
     .limit(50);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Teams get the board and claimed challenges (RLS); admins also get the pool.
+export async function loadChallenges(): Promise<Challenge[]> {
+  const { data, error } = await createClient()
+    .from("challenges")
+    .select("id, title, task, reward_cards, reward_minutes, status, activated_at, claimed_by, claimed_at")
+    .order("created_at");
   if (error) throw new Error(error.message);
   return data;
 }

@@ -20,6 +20,7 @@ export type GameState = {
   phase_started_at: string;
   paused_at: string | null;
   updated_at: string;
+  board_size: number;
 };
 
 export const SPEEDS = [0, 1, 2] as const;
@@ -48,12 +49,25 @@ export type LedgerEntry = {
   id: number;
   created_at: string;
   team_id: string;
-  kind: "adjust" | "reversal" | "speed" | "eliminated" | "revived";
+  kind: "adjust" | "reversal" | "speed" | "eliminated" | "revived" | "challenge";
   delta_ms: number;
   balance_after_ms: number;
   reason: string | null;
   details: Record<string, unknown>;
   reversed_by: number | null;
+};
+
+export type Challenge = {
+  id: string;
+  title: string;
+  task: string;
+  reward_cards: number;
+  reward_minutes: number;
+  // Teams only ever receive "active" and "claimed" (RLS); admins see all.
+  status: "pool" | "active" | "claimed" | "retired";
+  activated_at: string | null;
+  claimed_by: string | null;
+  claimed_at: string | null;
 };
 
 export type ActivityLogEntry = {

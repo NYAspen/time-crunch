@@ -3,6 +3,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+const REFRESH_EVENT = "live-tables-refresh";
+
+// Call after any action that changes data, so every live section on the page
+// (clock, board, history…) reloads now instead of waiting for realtime,
+// which can take a few seconds.
+export function refreshAllLiveTables() {
+  window.dispatchEvent(new Event(REFRESH_EVENT));
+}
+
+// Wraps a form action (for useActionState) so live sections reload once it finishes.
+export function withRefresh<S>(action: (prev: S, formData: FormData) => Promise<S>) {
+  return async (prev: S, formData: FormData) => {
+    const result = await action(prev, formData);
+    refreshAllLiveTables();
+    return result;
+  };
+}
+
 // Loads data with `load`, then reloads it whenever the given table changes
 // in the database (via Supabase Realtime). Also reloads when the phone wakes up
 // or reconnects, because realtime messages can be missed while asleep.
@@ -51,6 +69,7 @@ export function useLiveTable<T>(table: string, load: () => Promise<T>) {
     };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("online", refresh);
+    window.addEventListener(REFRESH_EVENT, refresh);
 
     refresh();
 
@@ -58,6 +77,7 @@ export function useLiveTable<T>(table: string, load: () => Promise<T>) {
       mounted.current = false;
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", refresh);
+      window.removeEventListener(REFRESH_EVENT, refresh);
       supabase.removeChannel(channel);
     };
   }, [table, refresh]);

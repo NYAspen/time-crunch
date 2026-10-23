@@ -103,6 +103,23 @@ const checks = [
     const { error } = await supabase.rpc("_settle_team", { p_team: team.id });
     return !!error;
   }],
+  // Stage 3: challenges
+  ["See hidden pool challenges", async () => {
+    const { data, error } = await supabase.from("challenges").select("id").in("status", ["pool", "retired"]);
+    return !!error || data.length === 0;
+  }],
+  ["Mark a challenge claimed directly", async () => {
+    const { data, error } = await supabase.from("challenges").update({ status: "claimed", claimed_by: team.id }).eq("status", "active").select();
+    return !!error || data.length === 0;
+  }],
+  ["Add a challenge (admin_import_challenges)", async () => {
+    const { error } = await supabase.rpc("admin_import_challenges", { p_rows: [{ title: "hack", task: "", reward_cards: 9, reward_minutes: 600 }] });
+    return !!error;
+  }],
+  ["Change board size (admin_set_board_size)", async () => {
+    const { error } = await supabase.rpc("admin_set_board_size", { new_size: 1 });
+    return !!error;
+  }],
 ];
 
 let failures = 0;

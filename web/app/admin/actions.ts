@@ -1,6 +1,7 @@
 "use server";
 
 import { getUserId, isAdmin } from "@/lib/auth";
+import { parseTable } from "@/lib/csv";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -107,6 +108,94 @@ export async function undoTimeEntry(entryId: number): Promise<ActionResult> {
   const { error } = await supabase.rpc("admin_reverse_entry", { entry_id: entryId });
   if (error) return { ok: false, message: error.message };
   return { ok: true, message: `Undid entry #${entryId}.` };
+}
+
+// ---------------------------------------------------------------------------
+// Challenges
+// ---------------------------------------------------------------------------
+
+type ChallengeFields = { title: string; task: string; reward_cards: number; reward_minutes: number };
+
+function validateChallenge(c: ChallengeFields): string | null {
+  if (c.title.length < 1 || c.title.length > 100) return "Title must be 1–100 characters.";
+  if (!Number.isInteger(c.reward_cards) || c.reward_cards < 0 || c.reward_cards > 10) {
+    return "Card reward must be a whole number from 0 to 10.";
+  }
+  if (!Number.isInteger(c.reward_minutes) || c.reward_minutes < 0 || c.reward_minutes > 600) {
+    return "Time bonus must be a whole number of minutes from 0 to 600.";
+  }
+  return null;
+}
+
+// Expects rows pasted from a spreadsheet with headers:
+// title, task, reward_cards, reward_minutes
+export async function importChallenges(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const rows = parseTable(String(formData.get("table") ?? ""));
+  if (rows.length === 0) {
+    return { ok: false, message: "Paste a header row (title, task, reward_cards, reward_minutes) and at least one challenge." };
+  }
+  if (!("title" in rows[0])) {
+    return { ok: false, message: 'The first row must be the headers, including "title".' };
+  }
+
+  const challenges: ChallengeFields[] = [];
+  for (const [i, row] of rows.entries()) {
+    const challenge = {
+      title: row.title ?? "",
+      task: row.task ?? "",
+      reward_cards: Number(row.reward_cards || 0),
+      reward_minutes: Number(row.reward_minutes || 0),
+    };
+    const problem = validateChallenge(challenge);
+    // i + 2: spreadsheet row number (row 1 is the headers).
+    if (problem) return { ok: false, message: `Row ${i + 2} ("${challenge.title}"): ${problem} Nothing was imported.` };
+    challenges.push(challenge);
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_import_challenges", { p_rows: challenges });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: `Imported ${data} challenge${data === 1 ? "" : "s"}.` };
+}
+
+export async function updateChallenge(challengeId: string, formData: FormData): Promise<ActionResult> {
+  const challenge = {
+    title: String(formData.get("title") ?? "").trim(),
+    task: String(formData.get("task") ?? "").trim(),
+    reward_cards: Number(formData.get("reward_cards")),
+    reward_minutes: Number(formData.get("reward_minutes")),
+  };
+  const problem = validateChallenge(challenge);
+  if (problem) return { ok: false, message: problem };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_update_challenge", {
+    p_challenge: challengeId,
+    p_title: challenge.title,
+    p_task: challenge.task,
+    p_reward_cards: challenge.reward_cards,
+    p_reward_minutes: challenge.reward_minutes,
+  });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: "Saved." };
+}
+
+export async function setChallengeStatus(challengeId: string, status: "retired" | "pool"): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_challenge_status", { p_challenge: challengeId, new_status: status });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: status === "retired" ? "Challenge removed." : "Challenge back in the pool." };
+}
+
+export async function setBoardSize(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const size = Number(formData.get("size"));
+  if (!Number.isInteger(size) || size < 1 || size > 50) {
+    return { ok: false, message: "Board size must be a whole number from 1 to 50." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_board_size", { new_size: size });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: `Board now shows ${size} challenges.` };
 }
 
 // ---------------------------------------------------------------------------

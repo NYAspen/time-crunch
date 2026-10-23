@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useLiveTable } from "@/components/useLiveTable";
+import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadGameState } from "@/lib/queries";
 import { PHASE_LABELS, PHASES, type ActionResult, type Phase } from "@/lib/types";
 import { setPaused, setPhase } from "./actions";
@@ -18,6 +18,7 @@ export function PhaseControls() {
     startTransition(async () => {
       setResult(await action());
       setConfirming(null);
+      refreshAllLiveTables();
     });
 
   return (
