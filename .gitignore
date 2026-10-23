@@ -1,0 +1,5 @@
+# Secrets and generated files (web/.gitignore covers the app itself)
+.env*
+node_modules/
+.next/
+.vercel/
