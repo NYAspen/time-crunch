@@ -302,6 +302,59 @@ export async function grantDraw(_prev: ActionResult, formData: FormData): Promis
 }
 
 // ---------------------------------------------------------------------------
+// Curses, deleting content, resetting the game
+// ---------------------------------------------------------------------------
+
+export async function adminClearCurse(curseId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_clear_curse", { p_curse: curseId });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: "Curse cleared. Both teams' countdowns are back to 1× (the attacker stays at 0× if it has another curse active)." };
+}
+
+export async function deleteAllChallenges(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_delete_all_challenges");
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: `Deleted ${data} challenge(s).` };
+}
+
+export async function deleteAllCards(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_delete_all_cards");
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: `Deleted all card types and ${data} card(s).` };
+}
+
+// Clears all play (time, history, claims, hands, draws, curses, log) but keeps
+// challenges and cards. Optionally deletes every team and its login too.
+export async function resetGame(deleteTeams: boolean): Promise<ActionResult> {
+  const adminId = await requireAdmin();
+  if (!adminId) return NOT_ADMIN;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_reset_game");
+  if (error) return { ok: false, message: error.message };
+
+  if (deleteTeams) {
+    const admin = createAdminClient();
+    const { data: teams } = await admin.from("teams").select("id, user_id");
+    for (const team of teams ?? []) {
+      await admin.from("teams").delete().eq("id", team.id);
+      if (team.user_id) await admin.auth.admin.deleteUser(team.user_id);
+    }
+    await log(adminId, "teams_deleted_in_reset", null, { count: teams?.length ?? 0 });
+  }
+
+  return {
+    ok: true,
+    message: deleteTeams
+      ? "Game reset and all teams deleted. Create the new teams under Team logins."
+      : "Game reset: everyone is back to Preparation with 0 time.",
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Teams
 // ---------------------------------------------------------------------------
 

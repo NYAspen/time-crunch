@@ -3,10 +3,11 @@
 import { useActionState, useState, useTransition } from "react";
 import { ChallengeRewards } from "@/components/ChallengeRewards";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { DeleteAllButton } from "@/components/DeleteAllButton";
 import { refreshAllLiveTables, useLiveTable, withRefresh } from "@/components/useLiveTable";
 import { loadChallenges, loadGameState, loadTeams } from "@/lib/queries";
 import type { ActionResult, Challenge } from "@/lib/types";
-import { importChallenges, setBoardSize, setChallengeStatus, updateChallenge } from "./actions";
+import { deleteAllChallenges, importChallenges, setBoardSize, setChallengeStatus, updateChallenge } from "./actions";
 
 const EXAMPLE = "title\ttask\treward_cards\treward_minutes\nBean selfie\tTeam photo reflected in Cloud Gate\t2\t15";
 
@@ -118,6 +119,11 @@ export function ChallengeManager() {
           </p>
         </details>
       )}
+      <DeleteAllButton
+        label="Delete all challenges"
+        warning="This permanently deletes every challenge: on the board, in the pool and claimed. Time bonuses already given are kept. Use this before importing a new challenge list."
+        action={deleteAllChallenges}
+      />
     </CollapsibleSection>
   );
 }

@@ -62,8 +62,8 @@ export function TeamClockPanel({ teamId }: { teamId: string }) {
           </div>
           <p className="text-sm text-gray-600">{SPEED_HELP[team.speed]}</p>
           <p className="text-xs text-gray-500">
-            Honor system: change this when a curse starts or is cleared. Every team can see your speed, and every
-            change is logged.
+            Curses set this automatically. Only change it by hand to fix a mistake: every team can see your speed,
+            and every change is logged.
           </p>
           {result && !result.ok && <p className="rounded-lg bg-red-100 p-2 text-sm text-red-800">{result.message}</p>}
         </div>

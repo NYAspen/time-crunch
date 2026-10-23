@@ -7,7 +7,9 @@ import { logout } from "../actions";
 import { ActivityLog } from "./ActivityLog";
 import { CardManager } from "./CardManager";
 import { ChallengeManager } from "./ChallengeManager";
+import { CurseList } from "./CurseList";
 import { PhaseControls } from "./PhaseControls";
+import { ResetGame } from "./ResetGame";
 import { TeamClocks } from "./TeamClocks";
 import { TeamManager } from "./TeamManager";
 
@@ -37,10 +39,12 @@ async function AdminView() {
       <PhaseBanner />
       <PhaseControls />
       <TeamClocks />
+      <CurseList />
       <ChallengeManager />
       <CardManager />
       <TeamManager />
       <ActivityLog />
+      <ResetGame />
     </>
   );
 }

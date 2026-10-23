@@ -7,6 +7,7 @@ import { getCurrentTeam } from "@/lib/auth";
 import { logout } from "../actions";
 import { CardHand } from "./CardHand";
 import { ChallengeBoard } from "./ChallengeBoard";
+import { CurseBanner } from "./CurseBanner";
 import { TeamClockPanel } from "./TeamClockPanel";
 
 export default function TeamPage() {
@@ -37,6 +38,7 @@ async function TeamView() {
         </form>
       </header>
       <PhaseBanner />
+      <CurseBanner teamId={team.id} />
       <TeamClockPanel teamId={team.id} />
       <CardHand teamId={team.id} />
       <ChallengeBoard teamId={team.id} />

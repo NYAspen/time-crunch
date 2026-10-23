@@ -107,6 +107,19 @@ export type CardDraw = {
   created_at: string;
 };
 
+// Teams see curses they played or that are on them (RLS); admins see all.
+export type Curse = {
+  id: string;
+  attacker_team: string;
+  target_team: string;
+  card_name: string;
+  range_text: string;
+  clearance: string;
+  status: "active" | "cleared";
+  started_at: string;
+  cleared_at: string | null;
+};
+
 export type ActivityLogEntry = {
   id: number;
   created_at: string;

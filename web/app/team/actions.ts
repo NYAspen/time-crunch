@@ -45,9 +45,17 @@ export async function chooseCard(cardId: string): Promise<ActionResult> {
   return { ok: true, message: data ? `${data} added to your hand.` : "Card added to your hand." };
 }
 
-export async function playCard(cardId: string, targetCardId?: string): Promise<ActionResult> {
+export async function playCard(
+  cardId: string,
+  options: { targetCardId?: string; targetTeamId?: string; inRange?: boolean } = {},
+): Promise<ActionResult> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("use_card", { p_card: cardId, p_target: targetCardId ?? null });
+  const { data, error } = await supabase.rpc("use_card", {
+    p_card: cardId,
+    p_target: options.targetCardId ?? null,
+    p_target_team: options.targetTeamId ?? null,
+    p_in_range: options.inRange ?? false,
+  });
   if (error) return { ok: false, message: error.message };
   return { ok: true, message: data ? String(data) : "Card used." };
 }
@@ -57,4 +65,12 @@ export async function discardCard(cardId: string): Promise<ActionResult> {
   const { error } = await supabase.rpc("discard_card", { p_card: cardId });
   if (error) return { ok: false, message: error.message };
   return { ok: true, message: "Card discarded back into the deck." };
+}
+
+// Only the cursed team can clear its own curse (checked in the database).
+export async function clearCurse(curseId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("clear_curse", { p_curse: curseId });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: data ? String(data) : "Curse cleared." };
 }

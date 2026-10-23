@@ -41,7 +41,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 | Oct 22 | ✅ Stage 2: team time pools, countdowns, speed toggle, balance history |
 | Oct 22 | ✅ Stage 3: shared challenge board |
 | Oct 22 | ✅ Stage 4: shared card deck and team hands |
-| Oct 30–Nov 1 | Stage 5: team-recorded curses and steals, reset game, full-loop test on phones |
+| Oct 23 | ✅ Stage 5: curses (automatic speeds), reset game, delete-all. Next: UI adjustments, then the full-loop test on phones |
 | **Nov 1** | **Tier 1 complete** |
 | Nov 2–3 | Short field playtest, then fix problems |
 | Nov 3–5 | Tier 2, only if Tier 1 is solid |
@@ -78,7 +78,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 | D10 | A team can have at most one active curse at a time. | |
 | D11 | No curse effects apply during Preparation or while paused. | |
 | D12 | Range is honor-system in Tier 1: the attacker confirms "we are within range" when playing the card. | Automatic checking is Tier 2. |
-| D13 | Each team controls its own countdown speed: **0×, 1× or 2×**. 1× is normal, 0× stops the clock, and 2× drains double. Speed only has an effect during Elimination when the game isn't paused. | Honor system. Each change is logged, and every team's speed is shown publicly. |
+| D13 | Each team's countdown speed is **0×, 1× or 2×**. 1× is normal, 0× stops the clock, and 2× drains double. Speed only has an effect during Elimination when the game isn't paused. Curses set speeds automatically (D9), and teams can also change their own speed by hand to fix mistakes. | Every change is logged, and every team's speed is shown publicly. |
 
 ## 4. Requirements by tier
 
@@ -88,9 +88,10 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - Track each team's accumulated time during Preparation.
 - All countdowns start together when Elimination begins (D1). Pause and resume apply to all teams (D2).
 - Identify a team that reaches zero (D3).
-- **Team-controlled countdown speed (honor system, D13):** each team switches its own countdown between **0×, 1× and 2×**.
-  - When a curse is played, the victim switches to **2×** and the attacker to **0×** (D9).
-  - When the victim completes the clearance challenge, both switch back to **1×**.
+- **Countdown speed (D13):** each team's countdown runs at **0×, 1× or 2×**.
+  - When a curse is played, the victim is set to **2×** and the attacker to **0×** automatically (D9).
+  - When the victim marks the clearance task done, both go back to **1×** automatically.
+  - Teams can also change their own speed by hand, to fix mistakes.
   - Every speed change goes in the balance history.
   - Each team's current speed is visible to everyone and on the admin page.
   - The admin can reset a team's speed and correct its balance.
@@ -201,7 +202,12 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - **Challenges** (`content/challenges-example.csv`) have the columns `title, task, reward_cards, reward_minutes`. Copy the rows from Google Sheets, headers included, into Admin → Challenges → Import. Imported challenges go into the hidden pool, and the board fills from it at random.
 - **Cards** (`content/cards-example.csv`) have the columns `name, type, copies, description, range, clearance, effect`. `type` is `curse` or `powerup`; `effect` is blank (manual) or `duplicate`. Import them in Admin → Cards → Import cards.
 
-**Fresh test game:** an admin-only "Reset game" clears claims, hands, history and curses, reloads the content, unpauses, and sets the phase back to Preparation.
+**Fresh test game:** the admin-only "Reset game" (type RESET to confirm) works like this:
+- It clears time, time history, claims, hands, draws, curses and the activity log.
+- It returns every challenge to the pool and every card to the deck.
+- It unpauses the game and sets the phase back to Preparation, with 0 time for everyone.
+- Challenge and card content is kept. A tick box also deletes all teams and their logins.
+- "Delete all challenges" and "Delete all cards" buttons in their own admin sections clear the content itself.
 
 **Env vars** (`web/.env.local`, plus the same values in Vercel):
 - `NEXT_PUBLIC_SUPABASE_URL`: the project URL only, with no `/rest/v1/`.
@@ -241,11 +247,16 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - Teams use and discard their own cards.
 - **Test:** simultaneous draws never give out the same copy twice.
 
-**Stage 5: Curses, steals and the full loop**
-- Teams play curse cards on a target, with a range confirmation (D12).
-- When a curse is played, prompt the victim to switch to 2× and the attacker to 0×. When the victim marks it cleared, prompt both to return to 1× (D9–D11, D13).
-- Teams play steal cards.
-- A "Reset game" for a fresh test game, and setup instructions in a README.
+**Stage 5: Curses, reset and the full loop ✅** (full-loop phone test still to do)
+- Teams play curse cards on a target, with a range confirmation (D12). Only one active curse is allowed per target (D10).
+- **Speeds change automatically** (migration 0009):
+  - Playing a curse sets the target to 2× and the attacker to 0×.
+  - Clearing it, by the victim or the admin, sets the target to 1×. The attacker also goes to 1×, unless it still has another active curse.
+  - Teams can still change speeds by hand to fix mistakes. The banner offers a one-tap fix if a speed doesn't match the curse.
+- The admin sees active curses, with each team's current speed, and can clear a curse.
+- Reset game, plus delete-all for challenges and for cards.
+- Still to do: setup instructions in a README.
+- Stealing by teams was deferred. The admin can still move cards.
 - **Test:** the full loop with several teams on phones.
 
 ## 8. Open questions
@@ -257,7 +268,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 
 ## 9. Progress tracker
 
-**Current stage:** Stage 4 is complete and tested on 2026-10-22. Stage 5 (curses, steals, reset game, full-loop test) is next. It is the last Tier 1 stage.
+**Current stage:** Stage 5 is complete and tested on 2026-10-23. Next come UI adjustments requested by the user, then the full-loop test on several phones and a README. It is the last Tier 1 stage.
 
 ### Implemented
 - **Stage 1:**
@@ -332,7 +343,22 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - `scripts/race-draw.mjs` tests simultaneous draws. `rls-check.mjs` has 7 new card checks.
   - Sample deck: `content/cards-example.csv`.
 
+- **Stage 5** (migrations `0008_curses_reset.sql` and `0009_auto_curse_speed.sql`; run and tested):
+  - `curses` table: a snapshot of the card's name, range and clearance; one active curse per target.
+  - `use_card(p_card, p_target, p_target_team, p_in_range)`: a curse needs a target team and a range confirmation.
+  - Clearing a curse: `clear_curse` (victim only) and `admin_clear_curse`.
+  - Team page: `CurseBanner`, showing the curse on the team or by the team, the clearance task, and one-tap speed buttons.
+  - Admin page:
+    - "Curses" section listing active curses with each team's speed, and a Clear button
+    - "Reset game" section
+    - Delete all challenges and Delete all cards
+  - Bulk SQL statements use `where true`, because Supabase blocks UPDATE/DELETE without a WHERE clause.
+  - `rls-check.mjs` now has 34 checks.
+
 ### Outstanding
+- UI adjustments (the user will specify them).
+- Full-loop test on several phones.
+- README with setup instructions for future seasons.
 - Stages 2–5 (Tier 1) by Nov 1. Then the playtest, Tier 2 if there is time, and the rehearsal (section 2).
 - Write the real challenge list and card deck in the content format by about Nov 4.
 
@@ -385,3 +411,12 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - Draw N, keep 1. No hand limit for now.
   - Used and discarded cards return to the deck. Duplicate copies disappear instead.
   - Stealing is done for now by the admin moving a card between teams.
+- 2026-10-22: Stage 5:
+  - Curse speeds use one-tap prompts, not automatic changes.
+  - Team stealing is deferred; the admin can still move cards.
+  - Reset keeps content and can optionally delete teams.
+  - Delete-all buttons were added for challenges and for cards.
+- To add another admin: create and confirm the user in Supabase Auth, then run `insert into public.admins (user_id) select id from auth.users where email = '...';`.
+- 2026-10-23: **Curses now change speeds automatically**, replacing the one-tap prompts. Playing a curse sets the target to 2× and the attacker to 0×; clearing it sets both back to 1×. Manual speed changes remain for fixing mistakes.
+  - This brings part of Tier 2's "automatic siphoning" forward. Power-ups that change rates are still manual.
+  - Known edge case: if two teams curse each other at the exact same moment, the database may reject one with a "deadlock" error. That team just taps Use again.

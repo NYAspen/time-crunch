@@ -3,10 +3,11 @@
 import { useActionState, useState, useTransition } from "react";
 import { CardView } from "@/components/CardView";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { DeleteAllButton } from "@/components/DeleteAllButton";
 import { refreshAllLiveTables, useLiveTable, withRefresh } from "@/components/useLiveTable";
 import { loadCardDraws, loadCards, loadCardTypes, loadTeams } from "@/lib/queries";
 import type { ActionResult, Card, CardType, PublicTeam } from "@/lib/types";
-import { changeCopies, grantDraw, importCards, moveCard, updateCardType } from "./actions";
+import { changeCopies, deleteAllCards, grantDraw, importCards, moveCard, updateCardType } from "./actions";
 
 const EXAMPLE =
   "name\ttype\tcopies\tdescription\trange\tclearance\teffect\n" +
@@ -128,6 +129,11 @@ export function CardManager() {
           ))}
         </ul>
       </details>
+      <DeleteAllButton
+        label="Delete all cards"
+        warning="This permanently deletes every card type and every copy, including cards in teams' hands. Waiting draws are kept. Use this before importing a new deck."
+        action={deleteAllCards}
+      />
     </CollapsibleSection>
   );
 }

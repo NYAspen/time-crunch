@@ -145,6 +145,35 @@ const checks = [
     const { error } = await supabase.rpc("admin_move_card", { p_card: "00000000-0000-0000-0000-000000000000", p_team: team.id });
     return !!error;
   }],
+  // Stage 5: curses and resets
+  ["See curses between other teams", async () => {
+    const { data, error } = await supabase
+      .from("curses")
+      .select("id")
+      .neq("attacker_team", team.id)
+      .neq("target_team", team.id);
+    return !!error || data.length === 0;
+  }],
+  ["Create a curse directly (without a card)", async () => {
+    const { error } = await supabase.from("curses").insert({ attacker_team: team.id, target_team: team.id, card_name: "hack" });
+    return !!error;
+  }],
+  ["Clear a curse that isn't on it", async () => {
+    const { error } = await supabase.rpc("clear_curse", { p_curse: "00000000-0000-0000-0000-000000000000" });
+    return !!error;
+  }],
+  ["Reset the game (admin_reset_game)", async () => {
+    const { error } = await supabase.rpc("admin_reset_game");
+    return !!error;
+  }],
+  ["Delete all challenges (admin_delete_all_challenges)", async () => {
+    const { error } = await supabase.rpc("admin_delete_all_challenges");
+    return !!error;
+  }],
+  ["Delete all cards (admin_delete_all_cards)", async () => {
+    const { error } = await supabase.rpc("admin_delete_all_cards");
+    return !!error;
+  }],
   ["Use a card it doesn't hold", async () => {
     const { error } = await supabase.rpc("use_card", { p_card: "00000000-0000-0000-0000-000000000000", p_target: null });
     return !!error;

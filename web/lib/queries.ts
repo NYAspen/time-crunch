@@ -1,14 +1,21 @@
 import { createClient } from "@/lib/supabase/client";
-import type { ActivityLogEntry, Card, CardDraw, CardType, Challenge, GameState, LedgerEntry, PublicTeam, TeamClock } from "@/lib/types";
+import type {
+  ActivityLogEntry,
+  Card,
+  CardDraw,
+  CardType,
+  Challenge,
+  Curse,
+  GameState,
+  LedgerEntry,
+  PublicTeam,
+  TeamClock,
+} from "@/lib/types";
 
 // Browser-side reads. RLS decides what each user is allowed to see.
 
 export async function loadGameState(): Promise<GameState> {
-  const { data, error } = await createClient()
-    .from("game_state")
-    .select("*")
-    .eq("id", 1)
-    .single();
+  const { data, error } = await createClient().from("game_state").select("*").eq("id", 1).single();
   if (error) throw new Error(error.message);
   return data;
 }
@@ -24,7 +31,9 @@ export async function loadTeams(): Promise<PublicTeam[]> {
 
 // Teams only get their own clock back (RLS); admins get every team's.
 export async function loadClocks(): Promise<TeamClock[]> {
-  const { data, error } = await createClient().from("team_clocks").select("team_id, balance_ms, anchor_at, speed, running");
+  const { data, error } = await createClient()
+    .from("team_clocks")
+    .select("team_id, balance_ms, anchor_at, speed, running");
   if (error) throw new Error(error.message);
   return data;
 }
@@ -87,6 +96,19 @@ export async function loadCardDraws(): Promise<CardDraw[]> {
     .select("id, team_id, size, source, status, created_at")
     .neq("status", "done")
     .order("created_at");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Active curses plus those cleared in the last hour (so teams are reminded to
+// reset their speed).
+export async function loadCurses(): Promise<Curse[]> {
+  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { data, error } = await createClient()
+    .from("curses")
+    .select("id, attacker_team, target_team, card_name, range_text, clearance, status, started_at, cleared_at")
+    .or(`status.eq.active,cleared_at.gte.${since}`)
+    .order("started_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data;
 }
