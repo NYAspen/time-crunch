@@ -35,7 +35,7 @@ console.log(`Logged in as team "${teamName}". Trying forbidden actions…\n`);
 // Each check returns true if the action was BLOCKED (good).
 const checks = [
   ["Change game phase directly", async () => {
-    const { data, error } = await supabase.from("game_state").update({ phase: "ended" }).eq("id", 1).select();
+    const { data, error } = await supabase.from("game_state").update({ phase: "elimination" }).eq("id", 1).select();
     return !!error || data.length === 0;
   }],
   ["Rename a team", async () => {
@@ -47,7 +47,7 @@ const checks = [
     return !!error || data.length === 0;
   }],
   ["Call admin_set_phase", async () => {
-    const { error } = await supabase.rpc("admin_set_phase", { new_phase: "ended" });
+    const { error } = await supabase.rpc("admin_set_phase", { new_phase: "elimination" });
     return !!error;
   }],
   ["Call admin_set_paused", async () => {

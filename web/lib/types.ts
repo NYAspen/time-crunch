@@ -1,21 +1,16 @@
-export const PHASES = ["setup", "preparation", "lunch", "elimination", "ended"] as const;
+
+export const PHASES = ["preparation", "elimination"] as const;
 export type Phase = (typeof PHASES)[number];
 
 export const PHASE_LABELS: Record<Phase, string> = {
-  setup: "Setup",
   preparation: "Preparation",
-  lunch: "Lunch",
   elimination: "Elimination",
-  ended: "Game over",
 };
 
-// Reference schedule only; the admin switches phases manually.
+// Reference schedule only.
 export const PHASE_SCHEDULE: Record<Phase, string> = {
-  setup: "Before 8:00 AM",
-  preparation: "8:00 AM – 12:00 PM",
-  lunch: "12:00 – 1:00 PM",
+  preparation: "8:00 AM – 12:00 PM, then lunch",
   elimination: "1:00 – 5:00 PM",
-  ended: "After 5:00 PM",
 };
 
 export type GameState = {

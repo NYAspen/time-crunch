@@ -1,342 +1,296 @@
 # Project: Jet Lag: Chicago — Time Crunch
 
-## 1. Your role and priorities
-
-Help me build a simple, mobile-friendly website for a team-based game called **Jet Lag: Chicago — Time Crunch**.
-
-I have approximately one week to build this and limited web development experience. Guide me through setup and implementation step by step. Explain which commands to run, which accounts or services to set up, and what I need to do manually.
-
-Priorities:
-1. Correct game mechanics and reliable shared state.
-2. A simple interface that works well on phones.
-3. Secure separation of public game information and private team information.
-4. Easy administration during the live game.
-5. Visual polish only after the core mechanics work.
-
-Use Next.js and Supabase if appropriate. Choose the simplest reliable architecture, and do not implement every feature at once.
-
-## 2. Game structure
-
-The game has multiple teams. Each team has:
-- A team name and login/access method.
-- A banked time balance.
-- A countdown timer during the elimination phase.
-- A private inventory of cards.
-- A current reported location.
-- A status: active or eliminated.
-- Any active curse effects.
-
-The game has three scheduled periods:
-
-- **Preparation:** 8:00 AM–12:00 PM. Teams complete challenges, collect cards, and build up their time balance. There is no countdown or elimination.
-- **Lunch:** 12:00–1:00 PM. Freeze gameplay and timers. Teams record their location at noon and are expected to return there for the start of the next phase.
-- **Elimination:** 1:00–5:00 PM. Each team's timer counts down. Teams that reach zero are eliminated.
-
-An administrator must be able to switch the game from Preparation to Elimination for all teams in one action. The phase transition should happen consistently for every team, not separately as each team opens the website. The admin must also be able to pause and resume gameplay if necessary.
-
-Use server-authoritative game state so refreshing a page, closing a phone, or losing connection does not reset or incorrectly advance timers.
-
-## 3. Teams, access, and privacy
-
-Create an admin interface and a team interface.
-
-**Admin can:**
-- Create and edit teams.
-- Create and edit challenges and cards.
-- View all teams, their time balances, reported locations, active curses, and elimination status.
-- Switch phases, pause/resume the game, and correct data when necessary.
-- View the event's overall state.
-
-**Teams can:**
-- View the shared challenge board.
-- Claim a challenge they completed.
-- Draw cards when eligible.
-- View their own inventory and time balance.
-- Report their current location.
-- Use eligible cards and complete curse-clearance tasks.
-- View public information about other teams, such as team names, reported locations, and active/eliminated status.
-
-Teams must not be able to change another team's time, inventory, status, or location by editing requests or manipulating the website. Keep private inventories and other sensitive team data private. Validate important actions on the server.
-
-## 4. Challenge board
-
-The challenge board is shared by all teams.
-
-Each challenge has:
-- A title.
-- A description of the task.
-- Any location or completion requirements.
-- A reward specifying how many cards the winning team draws.
-- An active/completed status.
-
-The board should maintain a configurable number of active challenges, initially around 5–15.
-
-**Claiming a challenge:**
-1. A team completes a challenge in the real world.
-2. They submit a claim through the website.
-3. The server checks whether the challenge is still available and the game phase permits claims.
-4. The first valid claim succeeds.
-5. The winning team receives the challenge's specified card draw.
-6. The completed challenge disappears from the active board and a new challenge is generated or selected to replace it.
-
-If multiple teams claim the same challenge at nearly the same time, only one team may win. Use an atomic server/database operation rather than relying on the order in which clients update their screens.
-
-Teams self-report completion. Do not require an admin to approve every claim. Include basic protection against duplicate submissions.
-
-Challenges should stop being claimable when the game enters a phase in which challenge claims are disabled. Make this behavior configurable if needed.
-
-## 5. Card deck and drawing
-
-Create one shared, shuffled deck of card copies. Different copies may have identical effects, but each physical card copy in the game must have a unique identifier.
-
-Each card has:
-- A unique ID.
-- A name and description.
-- A card type.
-- Its effect or value.
-- Any relevant parameters, such as duration, radius, or clearance task.
-
-When a challenge rewards a draw of N cards:
-1. Draw N cards from the shared deck.
-2. Show the drawn cards to the team.
-3. The team chooses one card to keep.
-4. Return the unchosen cards to the shared deck and shuffle them back in.
-5. Add the chosen card to the team's inventory.
-
-Ensure that simultaneous draws cannot give the same card copy to two teams. Use server-side transactions or another reliable atomic mechanism.
-
-If there are not enough cards available, handle this explicitly rather than duplicating cards or silently failing.
-
-The regular card-hand limit is initially **7 cards per team**. Time rewards are stored in the team's time balance rather than occupying regular inventory slots. Define what happens if a team would exceed the hand limit: prevent the draw until the team can legally resolve it, or ask the team to discard a card. Make the rule configurable.
-
-## 6. Time cards and time balances
-
-Some cards grant a specified amount of time, such as 10, 15, 20, or 30 minutes.
-
-Time rewards should be added to a separate time balance, not counted toward the regular card-hand limit. Implement the time-card redemption behavior clearly: if a time card must be redeemed, the team should explicitly redeem it and the balance should update exactly once.
-
-During Preparation:
-- Teams accumulate time.
-- There is no running countdown.
-- Teams cannot be eliminated due to time reaching zero.
-
-At the start of Elimination:
-- Each team's countdown is initialized from its banked time.
-- The countdown runs at one second per real second while the game is active and unpaused.
-- A team is eliminated when its remaining time reaches zero.
-
-Store timer state using a server-side timestamp and remaining-time value, or an equivalent reliable design. Do not depend on a browser interval as the source of truth. The displayed timer should recover accurately after refreshes, sleep, disconnection, or reopening the site.
-
-## 7. Attacks, theft, and curses
-
-The card system may include:
-- **Theft cards:** Allow a team to steal a card from another team, according to the card's rules.
-- **Curse cards:** Apply a time effect to a target team until it completes a specified clearance task.
-- **Veto or power-up cards:** Implement their effects according to the card's configured description.
-
-A card can only be used if it is in the team's inventory and is valid for the current phase. A successful use should consume the card unless its rules explicitly say otherwise.
-
-### Theft
-
-For a photo-based theft card:
-- The attacker must satisfy the card's targeting/range requirements.
-- The attacker submits the required photo or confirmation.
-- On a valid use, steal one random eligible card from the target's inventory.
-- Transfer the card copy; do not duplicate it.
-- Apply a five-minute cooldown to the relevant theft action or card as configured.
-- Prevent simultaneous theft actions from transferring the same card twice.
-
-Do not build complicated image verification unless time permits. A simple upload or record of the required photo may be enough for the first version.
-
-### Curses
-
-A curse has:
-- An attacker.
-- A target.
-- A radius or targeting requirement.
-- A clearance task.
-- An active/inactive status.
-- A record of when it began and ended.
-
-For the initial version, a team can have at most one active curse at a time. Reject or clearly handle an attempted curse on a team that is already cursed.
-
-While a curse is active during Elimination:
-- The victim loses time at an additional rate of two minutes per real minute.
-- The attacker gains one minute per real minute.
-- The victim's ordinary countdown still runs at one minute per real minute.
-- Therefore, the victim loses a total of three minutes per real minute while cursed, and the attacker gains one minute per real minute.
-- These changes must be calculated accurately from timestamps, not by trusting a browser to send repeated timer updates.
-
-The curse ends when the victim completes the specified clearance task and records that completion in the website. The curse should not automatically end just because the victim leaves the curse's radius.
-
-Define carefully how the effect is accounted for when the curse begins, ends, or the game pauses, so neither team gains or loses extra time from refreshes or delayed requests. Do not apply curse time effects during Preparation or while gameplay is paused.
-
-## 8. Locations and radius checks
-
-For the first version, use **manual location reporting** rather than requiring continuous GPS.
-
-Each team can update its current location. Show reported locations on a shared map if this can be implemented simply; otherwise, a clear location list is acceptable.
-
-Location rules:
-- Other teams can see each team's latest reported location.
-- A team's current location is the latest location it submitted.
-- Radius-based actions compare the relevant teams' latest reported locations.
-- Leaving a radius does not automatically cancel an already-active curse.
-- Record when each location was last updated so players understand that locations may be stale.
-
-If feasible, use a simple map library with OpenStreetMap. Do not spend significant time building advanced GPS tracking. Make radius calculations server-side and clearly communicate that manual location reports are not independently verified.
-
-## 9. Lunch and phase transition
-
-At noon, Preparation ends and gameplay freezes for lunch.
-
-- Stop accepting challenge claims and new card actions.
-- Pause all game timers and curse effects.
-- Record each team's latest reported location as its lunch/start location.
-- Show teams their recorded location and remind them to return there for the Elimination start.
-- Do not assume the website can enforce where players physically go.
-
-At 1:00 PM, the admin triggers the Elimination phase:
-- Initialize every team's countdown from its banked time.
-- Start all countdowns from the same authoritative phase-transition time.
-- Resume normal game rules.
-- Do not let teams start their clocks at different times just because they opened the website at different times.
-
-If the admin pauses the game later, freeze countdowns and curse effects. When the game resumes, continue from the remaining time without charging time for the pause.
-
-## 10. Elimination and dropped cards
-
-When a team's timer reaches zero during Elimination:
-- Mark the team eliminated exactly once.
-- Stop that team's ability to claim challenges, draw cards, use attacks, or otherwise act as an active team.
-- Record the time and the team's latest reported location at elimination.
-- Make the team's remaining cards available for collection at that location, following the game's loot rules.
-- Do not transfer the eliminated team's banked time unless a specific rule says to.
-
-The website should make it clear where an eliminated team's cards are available. The contents may remain hidden until a team successfully claims the loot, if practical.
-
-Ensure that two teams cannot claim the same loot or card copy simultaneously.
-
-## 11. Admin controls and live-game reliability
-
-The admin dashboard is especially important because it will be used during a live event.
-
-Include:
-- Current phase and pause status.
-- A global phase-switch control with confirmation.
-- A pause/resume control.
-- A list of all teams with time, status, location, and active curse.
-- Challenge management.
-- Card/deck management.
-- A way to fix mistakes, such as correcting a team's time or undoing an accidental action.
-- Clear error messages when an action fails.
-
-Record important events in a basic activity log, including challenge wins, card draws, card uses, time changes, curse starts/ends, phase transitions, pauses, and eliminations. Include timestamps and affected teams.
-
-## 12. Security and data integrity
-
-Do not trust client-side data for:
-- Remaining time.
-- Whether a challenge is still available.
-- Whether a card is owned or usable.
-- Whether a team is eliminated.
-- Whether a curse is active.
-- Whether a team is within attack radius.
-- Whether a card or loot claim has already been completed.
-
-Validate all consequential actions on the server. Use database constraints, transactions, and authorization rules wherever appropriate. Never expose secret service-role keys in browser code. Configure Supabase Row Level Security and test that one team cannot access or modify another team's private data.
-
-## 13. Implementation plan
-
-Build the project in small, testable stages. Do not attempt to implement everything at once.
-
-**Stage 1 — Setup and interface**
-- Create the project and connect the database.
-- Implement admin access and team access.
-- Create teams and display the current game phase.
-- Verify that two different devices see the same shared state.
-
-**Stage 2 — Challenges**
-- Build the shared challenge board.
-- Implement challenge claiming and replacement.
-- Test two teams claiming the same challenge simultaneously.
-
-**Stage 3 — Cards**
-- Implement the shared deck, drawing, choosing one card, returning the rest, inventory, and hand limit.
-- Test concurrent draws and ensure no card copy can be duplicated.
-
-**Stage 4 — Time**
-- Implement banked time, redemption, phase transition, countdown, pause/resume, and elimination.
-- Test refreshing the page and reopening it after waiting.
-
-**Stage 5 — Attacks**
-- Implement manual location updates, range checks, theft, curses, and clearance tasks.
-- Test curse timing across refreshes and pauses.
-
-**Stage 6 — Loot and final testing**
-- Implement elimination loot and single-claim protection.
-- Test the full game with a few fake teams on multiple devices.
-- Fix critical bugs before adding optional features.
-
-## 14. How I want you to work with me
-
-Start with **Stage 1 only**.
-
-For each step:
-1. Tell me exactly what to do, including commands and where to run them.
-2. Tell me when I need to create an account, set an environment variable, or edit a dashboard setting.
-3. Implement a small, working feature.
-4. Explain how I can test it.
-5. Help debug errors before moving on.
-
-Keep explanations concise and practical. Do not assume I know web-development terminology. Do not generate the entire application in one large code dump. Do not add optional mechanics such as a collapsing border or a boogeyman until the core game works.
-
-If a rule is ambiguous, identify the ambiguity and recommend a simple default before implementing it. Maintain a written list of implemented features, outstanding tasks, and known bugs so we can finish a reliable minimum viable product within one week.
-
----
-
-## 15. Progress tracker
-
-Keep this section up to date as work proceeds.
-
-**Current stage:** Stage 1. Supabase is set up and local testing (Part D) passed on 2026-10-22. Deploying to Vercel next.
-
-### Architecture notes
-- App lives in `web/` (Next.js 16 App Router + TypeScript + Tailwind; Cache Components enabled, so request-time reads such as cookies must be inside `<Suspense>`). Next 16 renamed middleware to `proxy.ts`. Read `web/node_modules/next/dist/docs/` before using unfamiliar Next APIs.
-- Supabase: Postgres + Auth + Realtime. SQL migrations are in `web/supabase/migrations/` and are run by hand in the Supabase SQL Editor.
-- Browsers only READ, and RLS limits what they can read. Writes go through security-definer Postgres functions (RPC), which check `is_admin()`, or through server actions in `app/**/actions.ts`, which re-check admin and then use the secret key (`lib/supabase/admin.ts`, server-only).
-- Team login: each team is a Supabase Auth user with email `team-<teamId>@example.com` and the team's secret code as password. Codes are lowercased, so login is case-insensitive.
-- Live UI: the `components/useLiveTable.ts` hook reloads on Realtime changes, on tab visibility and when the device comes back online.
-- Env vars live in `web/.env.local`:
-  - `NEXT_PUBLIC_SUPABASE_URL`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-  - `SUPABASE_SERVICE_ROLE_KEY` (secret)
-
-### Implemented features
-- Stage 1 (tested locally against Supabase: live updates, login, RLS check):
-  - DB schema: `game_state`, `teams`, `admins` and `activity_log`, plus RLS, `admin_set_phase` / `admin_set_paused` RPCs and Realtime.
-  - Landing page, team login (pick team + code) and team page (name, live phase banner, live team list).
-  - Admin login and admin dashboard:
+A simple, mobile-friendly website for running a team-based game in Chicago.
+
+**Source of truth:** the "Time Crunch: Tech Requirements" spec (Tier 1/2/3), summarised in sections 1–4. Where the spec doesn't say something the build needs, this file uses a **working default (D#)** from section 3. Each default can be confirmed or changed; changes go in the decisions log (section 9).
+
+## 1. Deadlines and how we work
+
+- **Game day: Saturday, November 7, 2026.**
+- **Tier 1 working by about November 1**, so there is time to playtest and change things.
+- Reliable core functions first; automation and convenience features as time allows.
+- **Minimise admin work.** Teams do their own game actions: claim, draw, use cards, start and clear curses. The admin's jobs are:
+  - setup
+  - the single switch to Elimination
+  - pause/resume
+  - correcting mistakes
+
+  Every team action must still be checked by the server and be reversible by the admin.
+- Simple, clear controls are fine for a first version, as long as they are clear, consistent and recoverable.
+- Game state must survive refreshing or closing the page.
+- Team identification and clear instructions are needed from the start; polish can come later.
+- For future seasons, keep:
+  - the source code
+  - the content format
+  - the setup instructions
+  - a way to create a fresh test game
+- Any AI tools may be used, but everything must be tested before game day.
+
+The user has limited web-development experience. For each step:
+1. Say exactly what to do: commands, where to run them, accounts, env vars and dashboard settings.
+2. Build one small, working feature at a time. Never dump the whole app at once.
+3. Explain how to test it, and help debug before moving on.
+
+Keep explanations short and practical, with no jargon. When something is ambiguous, name it and propose a simple default before building. Flag dependencies and anything unlikely to be ready early. Keep section 9 up to date.
+
+## 2. Timeline
+
+| Dates | Goal |
+|---|---|
+| Oct 22 | ✅ Stage 1: setup, team identification, shared phase and pause, deployed |
+| Oct 23–25 | Stage 2: team time pools, countdowns, balance history |
+| Oct 25–27 | Stage 3: shared challenge board |
+| Oct 27–30 | Stage 4: shared card deck and team hands |
+| Oct 30–Nov 1 | Stage 5: team-recorded curses and steals, reset game, full-loop test on phones |
+| **Nov 1** | **Tier 1 complete** |
+| Nov 2–3 | Short field playtest, then fix problems |
+| Nov 3–5 | Tier 2, only if Tier 1 is solid |
+| Nov 5–6 | Final rehearsal with real content, then reset to a fresh game |
+| **Nov 7** | **Game day** |
+
+**The full loop to build and test first:** claim a challenge → draw a card → gain time → start countdown → record an attack and transfer → clear the curse. Test it with several teams on phones, including simultaneous claims and page refreshes. Fix problems before starting Tier 2.
+
+## 3. Game rules
+
+### From the spec
+- **Phases:** there are two.
+  - **Preparation** (morning): teams build up time. No countdown runs.
+  - **Elimination** (after lunch): countdowns run.
+  - Lunch is not a phase. The game is **paused** over lunch.
+- **Time:** time can be added and subtracted, the game can be paused and resumed, and a team that reaches zero is identified.
+- **Challenges:** there is a shared board. Each challenge has a reward and a place where it can be completed. A completed challenge is claimed, recorded against the claiming team, and replaced. Duplicate rewards must be prevented.
+- **Cards:** there is one common pool of individual copies of **time cards, curses and power-ups**. If the deck has two copies of a curse, only those two can be drawn until one returns to the pool. A curse shows its **range** and **clearance condition**. Each team has a private hand with an inventory limit.
+- **Curses and siphoning:** an active curse transfers time from the victim to the attacker, and the victim also suffers an extra drain. **Curses travel with the team holding them**: a cursed team stays cursed wherever it goes until it completes the clearance condition. Power-ups may change rates, for example by doubling them.
+- **Range:** a card can only be used when the attacker is within the card's range of the target.
+
+### Working defaults (not in the spec; confirm or change)
+| # | Default | Notes |
+|---|---|---|
+| D1 | The game starts in Preparation. One admin action switches **every team** to Elimination at the same server moment. Schedule: Preparation 8–12, lunch 12–1, Elimination 1–5. | Planned for Stage 2: the admin can set the Elimination start time in advance, and the server switches automatically, so no button press is needed at 1:00. |
+| D2 | Pause, used for lunch or emergencies, freezes every countdown and curse effect, and blocks team actions. No time is charged for paused time. | |
+| D3 | A team at zero during Elimination is marked eliminated once and can no longer act. It can still view the board. | |
+| D4 | The board shows a configurable number of active challenges, starting at 8. | |
+| D5 | Teams self-report claims. No admin approval; the first claim wins. | |
+| D6 | A challenge reward is "draw N": the team sees N cards, keeps 1, and the rest are reshuffled into the pool. | |
+| D7 | A time card adds its minutes to the team's balance and doesn't count toward the hand limit. | |
+| D8 | The hand limit is **7**. A draw that would go over the limit is blocked until the team uses or discards a card. | |
+| D9 | While a curse is active during Elimination, the victim's countdown runs at **2×** and the attacker's at **0×**, so the attacker effectively gains 1 min per real minute. | 
+| D10 | A team can have at most one active curse at a time. | |
+| D11 | No curse effects apply during Preparation or while paused. | |
+| D12 | Range is honor-system in Tier 1: the attacker confirms "we are within range" when playing the card. | Automatic checking is Tier 2. |
+| D13 | Each team controls its own countdown speed: **0×, 1× or 2×**. 1× is normal, 0× stops the clock, and 2× drains double. Speed only has an effect during Elimination when the game isn't paused. | Honor system. Each change is logged, and every team's speed is shown publicly. |
+
+## 4. Requirements by tier
+
+### Tier 1: required for the game (target Nov 1)
+
+**1. Team time pools and countdowns**
+- Track each team's accumulated time during Preparation.
+- All countdowns start together when Elimination begins (D1). Pause and resume apply to all teams (D2).
+- Identify a team that reaches zero (D3).
+- **Team-controlled countdown speed (honor system, D13):** each team switches its own countdown between **0×, 1× and 2×**.
+  - When a curse is played, the victim switches to **2×** and the attacker to **0×** (D9).
+  - When the victim completes the clearance challenge, both switch back to **1×**.
+  - Every speed change goes in the balance history.
+  - Each team's current speed is visible to everyone and on the admin page.
+  - The admin can reset a team's speed and correct its balance.
+- **Balance history:** every change is recorded (team, amount, reason, who, when). The admin can add or subtract time, or reverse an entry, to correct mistakes.
+- State survives refresh and closing the page, because the server owns the time.
+
+**2. Shared challenge board**
+- Display the current challenges, their rewards and where each can be completed.
+- Teams claim challenges themselves (D5). Each claim is recorded against the team, and the challenge is replaced automatically.
+- Prevent duplicate rewards: when two teams claim at the same moment, only one wins.
+- Organisers can easily load and update challenge content (section 6, Content).
+
+**3. Shared card deck**
+- Draw from a common pool of individual copies (time, curse, power-up). No copy can be held by two teams.
+- Display card instructions, including a curse's range and clearance condition.
+- Record every draw and which team holds each copy.
+- Hands are private. The spec accepts honor-system team selection, but we already have team logins (Stage 1), so privacy is enforced.
+
+**4. Team card hand**
+- Inventory limit (D8).
+- **Teams act for themselves:**
+  - **Use** a card: it leaves the hand and the use is logged.
+  - **Discard** a card: it goes back to the pool.
+  - **Steal:** the attacker plays a steal card, and the server moves one random card from the target's hand to the attacker's hand.
+- Power-up effects the system doesn't automate yet are shown as instructions, and are applied by the admin's time correction only if needed.
+
+### Tier 2: next priorities (only after Tier 1 passes a playtest)
+- **Automatic siphoning:** 
+  - Playing a curse sets both teams' speeds automatically (D9).
+  - Clearing it resets both speeds to 1×.
+  - A victim can be eliminated while still cursed.
+  - Power-ups that change rates (e.g. doubling) are included.
+- **Range checking:** when a card is used, compare the attacker–target distance against the card's range, using the teams' shared locations. Continuous tracking is optional. ⚠ *This is the hardest feature and unlikely to be ready early; the fallback is D12.*
+- **Automatic hand-limit handling and any remaining power-up effects.**
+
+### Tier 3: useful additions
+- Team logins and accounts. ✅ *Done early in Stage 1.*
+- Clear notifications for attacks, clearance, rewards and elimination.
+- A map showing teams and attack ranges. It depends on shared locations from Tier 2.
+- A more polished mobile interface.
+
+## 5. Dependencies and risks
+
+- **Time (Stage 2) comes first.** Curses, steals and time cards all write to the balance history.
+- **Cards depend on challenges** (rewards trigger draws) **and on time** (time cards add to the balance).
+- **Team self-service adds work to Tier 1.** Teams playing curses and steals themselves (Stages 4–5) is more work than admin-only buttons. If Stage 5 runs late, the fallback is admin-only buttons that do the same database actions.
+- **The team speed toggle (Tier 1) relies on honesty and memory.** A team might:
+  - forget to change speed when a curse starts or is cleared
+  - leave itself at 0× to stop its own clock.
+
+  Mitigations:
+  - every change is logged
+  - the admin can reset a speed and correct a balance.
+
+  Automatic siphoning (Tier 2) removes this risk.
+- **Range checking and the map** need shared team locations, which don't exist yet. ⚠ They are unlikely to be ready early.
+- **Content:** the real challenge list and card deck must be written in the content format by about **Nov 4** for the rehearsal. This isn't a coding task, but it blocks realistic testing.
+- **People:** several phones and players are needed for the simultaneous-claim tests, the playtest and the rehearsal.
+- **Free tiers:** Supabase pauses free projects after about a week of inactivity, so open the site the day before the game.
+
+## 6. Technical design
+
+**Stack:**
+- Next.js 16 (App Router, TypeScript, Tailwind) lives in `web/`.
+- Supabase provides Postgres, Auth and Realtime.
+- Vercel hosts the site and deploys automatically on `git push` (Root Directory = `web`).
+- The repo is private: `github.com/NYAspen/time-crunch`.
+
+**Next 16 specifics:**
+- Middleware is `proxy.ts`.
+- Cache Components is on, so request-time reads such as cookies must be inside `<Suspense>`.
+- Code that reads the clock or random values must come after `await connection()`.
+- Read `web/node_modules/next/dist/docs/` before using unfamiliar Next APIs.
+
+**Security model:**
+- Browsers only **read**, and Row Level Security (RLS) limits what each user sees.
+- Every write goes through one of two paths:
+  - A security-definer Postgres function (RPC). These functions check who is calling: for team actions, that the caller is that team, owns the card, the team is active, and the game is not paused.
+  - A server action (`app/**/actions.ts`) that re-checks admin rights and then uses the secret key (`lib/supabase/admin.ts`, server-only).
+- Never trust the browser for remaining time, card ownership, challenge availability or elimination.
+
+**Atomic actions:** claims, draws and steals each run inside one Postgres function with row locks, so simultaneous requests can't both succeed.
+
+**Timer design (Stage 2):**
+- Store each team's balance with the server timestamp it was last settled at (the "anchor").
+- Each team also has a `speed` of 0, 1 or 2.
+- While Elimination is running and unpaused: remaining = balance − speed × (now − anchor).
+- Every change (speed change, adjustment, pause, resume or the Elimination start) first settles the balance up to now, then writes a new anchor and a history row.
+- The browser only displays the remaining time, corrected for the phone's clock offset.
+
+**Team identification:**
+- Each team is a Supabase Auth user (`team-<teamId>@example.com`) whose password is the team's lowercased code.
+- The admin is a Supabase user listed in the `admins` table.
+
+**Live UI:** `components/useLiveTable.ts` reloads data on Realtime changes, when the tab becomes visible again, and when the phone reconnects.
+
+**Migrations:**
+- These are numbered SQL files in `web/supabase/migrations/`.
+- Run them in order, by hand, in the Supabase SQL Editor.
+- Never edit a migration after it has been run.
+
+**Content:**
+- Challenges and cards are CSV files in `content/`, editable in Google Sheets or Excel.
+- They are loaded through an admin Import screen.
+- The columns will be defined in Stages 3 and 4.
+
+**Fresh test game:** an admin-only "Reset game" clears claims, hands, history and curses, reloads the content, unpauses, and sets the phase back to Preparation.
+
+**Env vars** (`web/.env.local`, plus the same values in Vercel):
+- `NEXT_PUBLIC_SUPABASE_URL`: the project URL only, with no `/rest/v1/`.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`: this one is secret.
+
+## 7. Build stages (Tier 1)
+
+**Stage 1: Setup and team identification ✅**
+- Supabase is connected, with admin and team logins.
+- The admin creates and manages teams.
+- A live shared phase and pause, and an activity log.
+- An RLS check script.
+- Deployed to Vercel.
+- Reduced to two phases (migration 0002).
+
+**Stage 2: Time pools and countdowns**
+- A private team balance and a balance history.
+- Admin corrections: add or subtract time with a reason, or reverse a history entry.
+- The Elimination start applies to all teams at once, either from the admin's button or from a start time set in advance (D1). Pause and resume settle all teams (D2).
+- A live countdown on the team and admin pages, with zero detection that marks a team eliminated only once (D3).
+- A team speed toggle (0×, 1×, 2×): every change is logged, the current speed is visible to all, and the admin can reset it (D13).
+- **Test:** refresh, lock the phone for 5 minutes, pause and resume, and check that two phones show the same time.
+
+**Stage 3: Shared challenge board**
+- Challenges with a title, task, location, reward and status.
+- CSV import and admin editing.
+- A configurable number of active challenges (D4).
+- Atomic team claims with automatic replacement (D5).
+- **Test:** two phones claim the same challenge at the same moment.
+
+**Stage 4: Shared card deck and team hands**
+- Card types and individual copies, loaded by CSV import.
+- Draw N, keep 1 (D6).
+- Private hands with a hand limit (D8).
+- Time cards credit the balance (D7).
+- Teams use and discard their own cards.
+- **Test:** simultaneous draws never give out the same copy twice.
+
+**Stage 5: Curses, steals and the full loop**
+- Teams play curse cards on a target, with a range confirmation (D12).
+- When a curse is played, prompt the victim to switch to 2× and the attacker to 0×. When the victim marks it cleared, prompt both to return to 1× (D9–D11, D13).
+- Teams play steal cards.
+- A "Reset game" for a fresh test game, and setup instructions in a README.
+- **Test:** the full loop with several teams on phones.
+
+## 8. Open questions
+
+- **Stage 2:**
+  - Does each team start with some banked time, or 0?
+  - Is a team with 0 at the Elimination start eliminated immediately?
+- **Stage 3:** does a replacement challenge come from a fixed ordered list or at random?
+- **Stage 4:**
+  - Which card types and power-ups exist, and what does each do?
+  - Are there veto cards?
+
+## 9. Progress tracker
+
+**Current stage:** Stage 1 is complete and deployed. Next is Stage 2 (time).
+
+### Implemented
+- **Stage 1:**
+  - Database: `game_state`, `teams`, `admins` and `activity_log`, with RLS, the `admin_set_phase` / `admin_set_paused` RPCs, and Realtime.
+  - Landing page, team login (pick a team and enter a code), and team page (live phase banner and team list).
+  - Admin dashboard:
     - phase switch with confirmation
     - pause/resume
-    - create, rename, reset code and delete teams
+    - create, rename, reset the code of, and delete teams
     - live activity log
-  - `web/scripts/rls-check.mjs`: logs in as a team and verifies that forbidden writes and reads are blocked.
+  - `web/scripts/rls-check.mjs`.
+  - Deployed on Vercel and tested on phones on 2026-10-22.
+  - Two phases only (Preparation and Elimination). Migration `0002_two_phases.sql` must be run in the Supabase SQL Editor.
 
-### Outstanding tasks
-- Stage 1 remaining:
-  - push to GitHub
-  - deploy to Vercel (Root Directory = `web`, add the 3 env vars)
-  - test on two phones using the Vercel URL
-- Stages 2–6 as listed in section 13.
+### Outstanding
+- Run `web/supabase/migrations/0002_two_phases.sql` in Supabase.
+- Stages 2–5 (Tier 1) by Nov 1. Then the playtest, Tier 2 if there is time, and the rehearsal (section 2).
+- Write the real challenge list and card deck in the content format by about Nov 4.
 
 ### Known bugs
-- (none yet)
+- (none)
 
-### Decisions on ambiguous rules
-Record each ambiguity, the chosen default, and the date decided.
-- 2026-10-22: Phase changes are manual by the admin. The 8/12/1/5 times are shown only as a reference schedule.
-- 2026-10-22: Added a `setup` phase before Preparation (for creating teams) and an `ended` phase after Elimination.
-- 2026-10-22: Pause is independent of phase. The admin can pause in any phase.
-- 2026-10-22: Team codes are at least 6 characters (Supabase minimum) and case-insensitive.
-- 2026-10-22: Team login = pick team name + secret code; hosting = Vercel via GitHub.
+### Decisions log
+- 2026-10-22: Team login is a team pick plus a case-insensitive code of 6+ characters. It was kept even though the spec lists accounts as Tier 3, because it already works and keeps hands private.
+- 2026-10-22: Switched to the Tier 1/2/3 spec. Dropped from the original brief:
+  - photo upload for theft
+  - dropped-card loot at elimination
+  - recording lunch locations in the app
+
+  Rules from the original brief that the new spec doesn't mention are kept only as working defaults.
+- 2026-10-22: **Only two phases, Preparation and Elimination.** Lunch is a pause. The Setup, Lunch and Ended phases were removed (migration 0002).
+- 2026-10-22: **Reduce admin reliance.**
+  - Teams claim, draw, use, discard and steal cards, and start and clear curses, themselves. The admin only does setup, the Elimination start (which can be scheduled), pause, and corrections.
+- 2026-10-22: **Curse effects are handled manually by team-controlled countdown speed: 0×, 1× or 2× (D13).**
+  - Curse length varies, because it depends on how long the victim takes to clear it.
+  - While cursed, the victim runs at 2× and the attacker at 0×. In the original brief the victim was at 3×, but 3× is no longer an allowed speed, so this needs confirming.
+  - Automatic siphoning stays in Tier 2.
