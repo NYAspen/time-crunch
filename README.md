@@ -66,7 +66,7 @@ You need free accounts on **Supabase**, **GitHub** and **Vercel**, plus [Node.js
 ### 2.1 Create the database
 1. Go to **supabase.com**, click **New project**, choose a region near the players (e.g. *East US (Ohio)* for Chicago), and save the database password somewhere safe.
 2. When the project is ready, open **SQL Editor → New query**.
-3. Run **every file** in `web/supabase/migrations/` **one at a time, in number order**, `0001` first and `0009` last. For each file:
+3. Run **every file** in `web/supabase/migrations/` **one at a time, in number order**, starting with `0001` and ending with the highest number. For each file:
    - open it
    - copy everything
    - paste it into the SQL Editor
@@ -202,6 +202,7 @@ Run these from inside the `web` folder. They use the keys in `.env.local`. Repla
 
 | Command | What it checks |
 |---|---|
+| `node --env-file=.env.local scripts/sync-check.mjs` | Checks that live updates reach browsers quickly. It should say **PASS ✓** with times well under 1000 ms. |
 | `node --env-file=.env.local scripts/rls-check.mjs "Team A" codeA` | Logs in as a team and tries 34 things a team must **not** be able to do. Every line should say **BLOCKED ✓**. Run it after every database change. |
 | `node --env-file=.env.local scripts/race-claim.mjs "Team A" codeA "Team B" codeB` | Two teams claim the same challenge at the same instant. Exactly one should win. ⚠ This really claims 2 challenges. |
 | `node --env-file=.env.local scripts/race-draw.mjs "Team A" codeA "Team B" codeB` | Two teams draw cards at the same instant. No card should go to both. ⚠ Each team keeps a real card. |
@@ -218,6 +219,7 @@ Run **Reset game** after testing.
 | "relation … does not exist" or "Could not find the function …" | A database file in `web/supabase/migrations/` hasn't been run. Run the missing ones in order. |
 | "null" or blank text after an action | Usually the same cause: the newest database file hasn't been run. |
 | A database file fails with "already exists" | It was already run once. Don't run it again; continue with the next number. |
+| Updates are slow or missing | Run `scripts/sync-check.mjs` (section 7). If it fails, check that every database file has been run, including `0010_sync_broadcast.sql`. |
 | A team's page doesn't update | It updates live, and reloads every 20 seconds anyway. If it seems stuck, refresh the page. Locking the phone and unlocking it also triggers a reload. |
 | Admin login says "This account is not an admin" | Run the `insert into public.admins …` line from section 2.3 for that email. |
 | A team forgot its code | Admin → Team logins → Edit → Set code. |

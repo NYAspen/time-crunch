@@ -188,7 +188,12 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - Each team is a Supabase Auth user (`team-<teamId>@example.com`) whose password is the team's lowercased code.
 - The admin is a Supabase user listed in the `admins` table.
 
-**Live UI:** `components/useLiveTable.ts` reloads data on Realtime changes, when the tab becomes visible again, and when the phone reconnects.
+**Live UI:** `components/useLiveTable.ts` reloads data when the database broadcasts that a table changed, when the tab becomes visible again, when the phone reconnects, and every 20 s as a safety net.
+- **Sync broadcast** (migration 0010):
+  - Statement-level triggers on every game table call `realtime.send({table}, 'changed', 'game-sync', false)`. The message contains only the table name, no data.
+  - Each browser tab keeps ONE channel to `game-sync`, and only the sections showing that table reload. RLS decides what each one gets back.
+  - **Don't** go back to `postgres_changes` subscriptions per component. Supabase checks RLS for every change × every subscription, one at a time, and with about 30 subscriptions per page that made updates arrive seconds late.
+  - `scripts/sync-check.mjs` measures the delay.
 - **Rule:** show every action's result with `components/Notice.tsx` (green or red, fades after 5 s, or 8 s for errors, and has an × to close). Don't write one-off message boxes.
 - **Rule:** after any action, call `refreshAllLiveTables()`, or wrap form actions in `withRefresh(...)`. Every section then updates immediately; Supabase's realtime messages can take a few seconds and are only a backup.
 
@@ -374,6 +379,9 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - Write the real challenge list and card deck in the content format by about Nov 4.
 
 ### Known bugs
+- Fixed 2026-10-23 (migration 0010): even after the direct-call change, sync was still slow and the admin's clocks lagged behind the phones.
+  - Cause: each section subscribed to `postgres_changes` separately (about 30 subscriptions on the admin page, about 20 per team page). Supabase authorises every change against every subscription, one at a time.
+  - Fix: one broadcast channel per tab, carrying table-changed signals.
 - Fixed 2026-10-23: on Vercel, updates felt slow (countdowns lagging), and the admin's board count flickered.
   - Cause: every button went phone → Vercel server action → Supabase. Next.js runs server actions one at a time per phone, Vercel adds cold starts, and an action that refreshed the login cookie re-rendered the page.
   - Fix: game actions now call the database functions straight from the browser. Realtime itself was measured at about 0.4–0.5 s from Supabase to a logged-in team.

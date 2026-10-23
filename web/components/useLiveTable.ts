@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
 const REFRESH_EVENT = "live-tables-refresh";
 
 // Call after any action that changes data, so every live section on the page
-// (clock, board, history…) reloads now instead of waiting for realtime,
-// which can take a few seconds.
+// (clock, board, history…) reloads now instead of waiting for the sync message.
 export function refreshAllLiveTables() {
   window.dispatchEvent(new Event(REFRESH_EVENT));
 }
@@ -21,11 +21,50 @@ export function withRefresh<S>(action: (prev: S, formData: FormData) => Promise<
   };
 }
 
-// Loads data with `load`, then reloads it whenever the given table changes
-// in the database (via Supabase Realtime). Also reloads when the phone wakes up
-// or reconnects, because realtime messages can be missed while asleep.
-// Returns `refresh` so a page can reload right after its own action instead of
-// waiting for the realtime message.
+// ---------------------------------------------------------------------------
+// One shared sync connection per browser tab (see migration 0010).
+// The database broadcasts "table X changed" (no data) on the public topic
+// "game-sync"; every section showing table X then reloads it, and the normal
+// privacy rules decide what it gets back. One connection instead of one per
+// section per table keeps Supabase fast with many phones open.
+// ---------------------------------------------------------------------------
+
+const reloadersByTable = new Map<string, Set<() => void>>();
+let syncChannel: RealtimeChannel | null = null;
+let connectedBefore = false;
+const changedTables = new Set<string>();
+let flushTimer: ReturnType<typeof setTimeout> | undefined;
+
+function onTableChanged(table: string) {
+  // One action can change several tables in quick succession: gather them for
+  // a moment so each section reloads once.
+  changedTables.add(table);
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(() => {
+    for (const t of changedTables) reloadersByTable.get(t)?.forEach((reload) => reload());
+    changedTables.clear();
+  }, 100);
+}
+
+function ensureSyncChannel() {
+  if (syncChannel) return;
+  syncChannel = createClient()
+    .channel("game-sync")
+    .on("broadcast", { event: "changed" }, ({ payload }) => {
+      if (typeof payload?.table === "string") onTableChanged(payload.table);
+    })
+    .subscribe((status) => {
+      // After a reconnect, reload everything: messages sent while offline are lost.
+      if (status === "SUBSCRIBED") {
+        if (connectedBefore) refreshAllLiveTables();
+        connectedBefore = true;
+      }
+    });
+}
+
+// Loads data with `load`, then reloads it whenever the given table changes in
+// the database. Also reloads when the phone wakes up, reconnects, after the
+// page's own actions, and every 20 s as a safety net.
 export function useLiveTable<T>(table: string, load: () => Promise<T>) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -54,15 +93,11 @@ export function useLiveTable<T>(table: string, load: () => Promise<T>) {
 
   useEffect(() => {
     mounted.current = true;
-    const supabase = createClient();
+    ensureSyncChannel();
 
-    const channel = supabase
-      .channel(`live-${table}-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table }, refresh)
-      .subscribe((status) => {
-        // Reload after (re)connecting so nothing missed while offline is lost.
-        if (status === "SUBSCRIBED") refresh();
-      });
+    let reloaders = reloadersByTable.get(table);
+    if (!reloaders) reloadersByTable.set(table, (reloaders = new Set()));
+    reloaders.add(refresh);
 
     const onVisible = () => {
       if (document.visibilityState === "visible") refresh();
@@ -70,19 +105,17 @@ export function useLiveTable<T>(table: string, load: () => Promise<T>) {
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("online", refresh);
     window.addEventListener(REFRESH_EVENT, refresh);
-    // Safety net: realtime doesn't tell a team when a row stops being visible
-    // to it (e.g. a card leaving its hand), so also reload every 20 s.
     const poll = setInterval(refresh, 20000);
 
     refresh();
 
     return () => {
       mounted.current = false;
+      reloaders.delete(refresh);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", refresh);
       window.removeEventListener(REFRESH_EVENT, refresh);
       clearInterval(poll);
-      supabase.removeChannel(channel);
     };
   }, [table, refresh]);
 
