@@ -5,15 +5,10 @@ import { Countdown } from "@/components/Countdown";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { useServerNow } from "@/components/useServerNow";
 import { loadClocks, loadGameState, loadTeams } from "@/lib/queries";
+import { describeSpeed } from "@/lib/time";
 import { SPEEDS, type ActionResult, type Speed } from "@/lib/types";
 import { setMySpeed } from "./gameActions";
 import { Notice } from "@/components/Notice";
-
-const SPEED_HELP: Record<Speed, string> = {
-  0: "0× — clock stopped (your curse is active on another team)",
-  1: "1× — normal",
-  2: "2× — you are cursed",
-};
 
 export function TeamClockPanel({ teamId }: { teamId: string }) {
   const { data: game } = useLiveTable("game_state", loadGameState);
@@ -61,9 +56,10 @@ export function TeamClockPanel({ teamId }: { teamId: string }) {
               ))}
             </div>
           </div>
-          <p className="text-xs text-gray-600">{SPEED_HELP[team.speed]}</p>
+          <p className="text-xs text-gray-600">{describeSpeed(team.speed)}</p>
           <p className="text-xs text-gray-500">
-            Curses set this automatically. Only change it by hand to fix a mistake.
+            Curses change this automatically: +1× for a curse on you, −1× for each curse you played. Only change
+            it by hand to fix a mistake.
           </p>
           {result && !result.ok && <Notice compact result={result} />}
         </div>

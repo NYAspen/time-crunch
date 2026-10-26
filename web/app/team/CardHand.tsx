@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { CardView } from "@/components/CardView";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
-import { loadCardDraws, loadCards, loadCardTypes, loadTeams } from "@/lib/queries";
+import { loadCardDraws, loadCards, loadCardTypes, loadGameState, loadTeams } from "@/lib/queries";
 import type { ActionResult, Card, CardType, PublicTeam } from "@/lib/types";
 import { chooseCard, discardCard, openDraw, playCard } from "./gameActions";
 import { Notice } from "@/components/Notice";
@@ -13,11 +13,12 @@ export function CardHand({ teamId }: { teamId: string }) {
   const { data: draws } = useLiveTable("card_draws", loadCardDraws);
   const { data: types } = useLiveTable("card_types", loadCardTypes);
   const { data: teams } = useLiveTable("teams", loadTeams);
+  const { data: game } = useLiveTable("game_state", loadGameState);
   const [result, setResult] = useState<ActionResult>(null);
   const [pending, startTransition] = useTransition();
 
   if (error) return <p className="text-red-700">Error loading your cards: {error}</p>;
-  if (!cards || !draws || !types || !teams) return <p className="text-gray-500">Loading your cards…</p>;
+  if (!cards || !draws || !types || !teams || !game) return <p className="text-gray-500">Loading your cards…</p>;
 
   const typeOf = (card: Card) => types.find((t) => t.id === card.type_id);
   const mine = cards.filter((c) => c.holder_team === teamId);
@@ -26,6 +27,11 @@ export function CardHand({ teamId }: { teamId: string }) {
   const offered = openDrawRow ? mine.filter((c) => c.status === "offered" && c.draw_id === openDrawRow.id) : [];
   const waiting = draws.filter((d) => d.team_id === teamId && d.status === "pending");
   const otherTeams = teams.filter((t) => t.id !== teamId && t.status === "active");
+  const cursesAllowed = game.phase === "elimination";
+  const holdsCurse = hand.some((c) => typeOf(c)?.type === "curse");
+  // Over the hand limit: the team must discard before it can draw or use cards
+  // (also checked in the database).
+  const excess = Math.max(hand.length - game.hand_limit, 0);
 
   const run = (action: () => Promise<ActionResult>) =>
     startTransition(async () => {
@@ -36,6 +42,8 @@ export function CardHand({ teamId }: { teamId: string }) {
   return (
     <section className="space-y-3">
       <Notice result={result} />
+
+      <HandMeter count={hand.length} limit={game.hand_limit} />
 
       {openDrawRow ? (
         <div className="space-y-2 rounded-xl border-2 border-purple-400 bg-purple-50 p-3">
@@ -63,7 +71,7 @@ export function CardHand({ teamId }: { teamId: string }) {
               You have {waiting.length} card draw{waiting.length === 1 ? "" : "s"} waiting
             </div>
             <button
-              disabled={pending}
+              disabled={pending || excess > 0}
               onClick={() => run(openDraw)}
               className="w-full rounded-lg bg-purple-600 p-3 font-semibold text-white disabled:opacity-50"
             >
@@ -71,6 +79,23 @@ export function CardHand({ teamId }: { teamId: string }) {
             </button>
           </div>
         )
+      )}
+
+      {excess > 0 && (
+        <div className="rounded-xl border-2 border-red-500 bg-red-50 p-3">
+          <div className="font-bold text-red-800">Your hand is over the limit</div>
+          <p className="text-sm">
+            You hold {hand.length} cards and the limit is {game.hand_limit}. Discard {excess} card
+            {excess === 1 ? "" : "s"} before you can draw or use cards.
+          </p>
+        </div>
+      )}
+
+      {game.is_paused ? (
+        <p className="text-sm text-gray-600">The game is paused. Cards can be used again when it resumes.</p>
+      ) : (
+        !cursesAllowed &&
+        holdsCurse && <p className="text-sm text-gray-600">Curses can be played once Elimination starts.</p>
       )}
 
       {hand.length === 0 ? (
@@ -86,6 +111,7 @@ export function CardHand({ teamId }: { teamId: string }) {
                   cardType={t}
                   hand={hand}
                   otherTeams={otherTeams}
+                  canUse={!game.is_paused && excess === 0 && (cursesAllowed || t.type !== "curse")}
                   typeOf={typeOf}
                   pending={pending}
                   run={run}
@@ -99,11 +125,48 @@ export function CardHand({ teamId }: { teamId: string }) {
   );
 }
 
+// Big "3 / 5" count with one slot per allowed card: grey with room left,
+// orange when full, red when over the limit.
+function HandMeter({ count, limit }: { count: number; limit: number }) {
+  const over = count > limit;
+  const full = count === limit;
+  const tone = over
+    ? "border-red-500 bg-red-50 text-red-800"
+    : full
+      ? "border-orange-400 bg-orange-50 text-orange-900"
+      : "border-gray-300 bg-white text-gray-900";
+  const filled = over ? "bg-red-500" : full ? "bg-orange-500" : "bg-gray-900";
+  const note = over ? "Over the limit" : full ? "Hand full: keeping another card puts you over" : "Room for more";
+
+  return (
+    <div className={`rounded-xl border-2 px-3 py-2 ${tone}`}>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-sm font-semibold uppercase tracking-wide">Cards in hand</span>
+        <span className="text-2xl font-bold tabular-nums">
+          {count} / {limit}
+        </span>
+      </div>
+      <div className="mt-1 flex gap-1" aria-hidden>
+        {Array.from({ length: Math.max(count, limit) }, (_, i) => (
+          <span
+            key={i}
+            className={`h-2.5 flex-1 rounded-full ${i < count ? filled : "bg-gray-200"} ${
+              i >= limit ? "ring-2 ring-red-300" : ""
+            }`}
+          />
+        ))}
+      </div>
+      <div className="mt-1 text-xs">{note}</div>
+    </div>
+  );
+}
+
 function HandCard({
   card,
   cardType,
   hand,
   otherTeams,
+  canUse,
   typeOf,
   pending,
   run,
@@ -112,6 +175,7 @@ function HandCard({
   cardType: CardType;
   hand: Card[];
   otherTeams: PublicTeam[];
+  canUse: boolean; // not while paused or over the hand limit; curses only in Elimination (all checked in the database too)
   typeOf: (card: Card) => CardType | undefined;
   pending: boolean;
   run: (action: () => Promise<ActionResult>) => void;
@@ -123,13 +187,17 @@ function HandCard({
   const others = hand.filter((c) => c.id !== card.id);
   const isCurse = cardType.type === "curse";
   const isDuplicateEffect = !isCurse && cardType.effect === "duplicate";
-  const ready = isCurse ? !!targetTeam && inRange : isDuplicateEffect ? !!target : true;
+  const ready = canUse && (isCurse ? !!targetTeam && inRange : isDuplicateEffect ? !!target : true);
 
   return (
     <CardView cardType={cardType} isDuplicate={card.is_duplicate}>
       {mode === "idle" && (
         <div className="flex gap-2 pt-1">
-          <button onClick={() => setMode("use")} className="flex-1 rounded-lg bg-gray-900 p-2 font-semibold text-white">
+          <button
+            disabled={!canUse}
+            onClick={() => setMode("use")}
+            className="flex-1 rounded-lg bg-gray-900 p-2 font-semibold text-white disabled:opacity-40"
+          >
             Use
           </button>
           <button onClick={() => setMode("discard")} className="rounded-lg border bg-white px-3 text-sm">

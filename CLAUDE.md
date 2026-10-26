@@ -73,12 +73,12 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 | D5 | Teams self-report claims with no admin approval, and the first claim wins. Teams can claim in either phase and several in a row, but not while the game is paused or after they've been eliminated. The time bonus is added immediately, and a card draw is queued. | |
 | D6 | A challenge reward is "draw N": the team taps Draw, sees N random cards, and keeps 1. The rest go back into the deck. If the deck has fewer than N cards, the team sees what's left. When only one card is revealed, it goes straight into the hand with no choice step. | Confirmed. Each claim queues a draw; a draw stays open across refreshes. |
 | D7 | Card types for now are **curse** and **power-up** (the card list is still being planned). Time cards aren't included, because challenges give time bonuses directly. | New types or effects can be added later with a small database change. |
-| D8 | **No hand limit for now.** | Revisit once the card list exists. |
-| D9 | While a curse is active during Elimination, the victim's countdown runs at **2×** and the attacker's at **0×**, so the attacker effectively gains 1 min per real minute. | 
+| D8 | **Hand limit: 5 cards by default**; the admin can set 1–50 (Admin → Cards). Offered cards don't count. A team over the limit can't draw or use cards until it discards down to the limit; claims still work. | Added 2026-10-23 (migration 0012). |
+| D9 | Each active curse adds **+1×** to the victim's speed and **−1×** to the attacker's (from 1×: victim 2×, attacker 0×). Curses stack, so a team can curse and be cursed at once. A team cursing two teams runs at −1×, so its clock goes up. | Changed from fixed speeds on 2026-10-23 (migration 0011). |
 | D10 | A team can have at most one active curse at a time. | |
-| D11 | No curse effects apply during Preparation or while paused. | |
+| D11 | Curses can only be **played** during Elimination (blocked in Preparation, checked by the server). No curse effects apply while paused. | Play-blocking added 2026-10-23 (migration 0011). |
 | D12 | Range is honor-system in Tier 1: the attacker confirms "we are within range" when playing the card. | Automatic checking is Tier 2. |
-| D13 | Each team's countdown speed is **0×, 1× or 2×**. 1× is normal, 0× stops the clock, and 2× drains double. Speed only has an effect during Elimination when the game isn't paused. Curses set speeds automatically (D9), and teams can also change their own speed by hand to fix mistakes. | Every change is logged, and every team's speed is shown publicly. |
+| D13 | Teams can set their countdown speed by hand to **0×, 1× or 2×**. 1× is normal, 0× stops the clock, and 2× drains double. Curses shift speeds by 1 (D9), so the actual speed can be anywhere from −20× to 20×; below 0 the clock goes up. Speed only has an effect during Elimination when the game isn't paused. Manual changes are for fixing mistakes. | Every change is logged, and every team's speed is shown publicly. |
 
 ## 4. Requirements by tier
 
@@ -89,8 +89,8 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - All countdowns start together when Elimination begins (D1). Pause and resume apply to all teams (D2).
 - Identify a team that reaches zero (D3).
 - **Countdown speed (D13):** each team's countdown runs at **0×, 1× or 2×**.
-  - When a curse is played, the victim is set to **2×** and the attacker to **0×** automatically (D9).
-  - When the victim marks the clearance task done, both go back to **1×** automatically.
+  - When a curse is played, the victim's speed goes up by **1×** and the attacker's down by **1×** automatically (D9).
+  - When the victim marks the clearance task done, both shift back automatically.
   - Teams can also change their own speed by hand, to fix mistakes.
   - Every speed change goes in the balance history.
   - Each team's current speed is visible to everyone and on the admin page.
@@ -270,7 +270,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - **Card list (still being planned):**
   - What is the real deck, and which power-ups need automatic effects?
   - Are there veto or steal cards?
-  - Is a hand limit needed after all?
+  - What should the hand limit be? (Default 5, adjustable.)
 
 ## 9. Progress tracker
 
@@ -361,6 +361,20 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - Bulk SQL statements use `where true`, because Supabase blocks UPDATE/DELETE without a WHERE clause.
   - `rls-check.mjs` now has 34 checks.
 
+- **Stacking curse speeds** (migration `0011_curse_speed_steps.sql`, 2026-10-23; **not yet run**):
+  - Curses shift speeds by ±1 (`_shift_speed`) instead of setting them, so a team can curse and be cursed at once.
+  - `teams.speed` is now allowed from −20 to 20.
+  - `use_card` rejects curses outside Elimination. On the Cards tab, **Use** is greyed out for curses in Preparation and for every card while paused, with a one-line note above the hand (like claims). Discard still works while paused.
+  - `_curse_speed(team)` = 1 + curses on the team − curses it played. `sync_my_speed()` (team) and `admin_sync_speed(team)` set a team's speed to that value. The curse banner and the admin Curses section show a Fix button when a speed doesn't match.
+  - `rls-check.mjs` has 1 new check (35).
+
+- **Hand limit** (migration `0012_hand_limit.sql`, 2026-10-23; **not yet run**, run after 0011):
+  - `game_state.hand_limit` (default 5, 1–50), set with `admin_set_hand_limit`.
+  - `_hand_excess(team)` / `_require_hand_within_limit(team)`: `open_draw` and `use_card` refuse while over the limit. `choose_card` and `discard_card` still work.
+  - Team Cards tab: a "Cards in hand n / limit" meter at the top (one slot per card; grey, then orange when full, then red when over), a red over-limit box, and greyed-out Draw and Use buttons. The Cards tab button always shows n/limit, in red when over.
+  - Admin Cards section: hand-limit setting, and n/limit per team under "Cards held by teams".
+  - `rls-check.mjs` has 1 new check (36).
+
 - **UI adjustments (2026-10-23):**
   - Messages use `components/Notice.tsx`: they fade after 5 s (8 s for errors) and have an × to close.
   - Team page is mobile-first:
@@ -442,3 +456,8 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - 2026-10-23: **Curses now change speeds automatically**, replacing the one-tap prompts. Playing a curse sets the target to 2× and the attacker to 0×; clearing it sets both back to 1×. Manual speed changes remain for fixing mistakes.
   - This brings part of Tier 2's "automatic siphoning" forward. Power-ups that change rates are still manual.
   - Known edge case: if two teams curse each other at the exact same moment, the database may reject one with a "deadlock" error. That team just taps Use again.
+- 2026-10-23: **Curses now add and subtract speed instead of setting it** (migration 0011), so teams can curse each other and be cursed at once. Each curse adds +1× to the victim and −1× to the attacker, and clearing it reverses that. Manual changes are kept: a curse shifts from whatever the speed currently is.
+  - Default chosen: a team cursing several teams goes below 0×, so its clock counts up (it gains time from each victim). Alternative if that's unwanted: stop at 0×.
+  - Still one active curse per target (D10).
+- 2026-10-23: **Hand limit added** (D8). Default 5, admin-adjustable. Over the limit, the team must discard before drawing or using cards.
+- 2026-10-23: **Curses can't be played during Preparation**, only during Elimination (D11). Teams can still draw and hold them in the morning.

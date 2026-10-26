@@ -3,15 +3,16 @@
 import { useState, useTransition } from "react";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadCurses, loadTeams } from "@/lib/queries";
-import type { ActionResult, Speed } from "@/lib/types";
-import { clearCurse, setMySpeed } from "./gameActions";
+import { curseSpeed } from "@/lib/time";
+import type { ActionResult } from "@/lib/types";
+import { clearCurse, syncMySpeed } from "./gameActions";
 import { Notice } from "@/components/Notice";
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
-// Shows curses on/by this team. Playing and clearing a curse sets both teams'
-// speeds automatically; if a speed was changed by hand since, a button offers
-// to put it back.
+// Shows curses on/by this team. Playing and clearing a curse shifts both teams'
+// speeds by 1 automatically; if the speed was changed by hand since, a button
+// offers to put it back to what the curses add up to.
 export function CurseBanner({ teamId }: { teamId: string }) {
   const { data: curses } = useLiveTable("curses", loadCurses);
   const { data: teams } = useLiveTable("teams", loadTeams);
@@ -36,16 +37,19 @@ export function CurseBanner({ teamId }: { teamId: string }) {
       refreshAllLiveTables();
     });
 
-  const speedStatus = (speed: Speed) =>
-    me.speed === speed ? (
-      <p className="text-sm font-semibold">Your countdown is running at {speed}×.</p>
+  const expected = curseSpeed(teamId, curses.filter((c) => c.status === "active"));
+  const speedStatus =
+    me.speed === expected ? (
+      <p className="text-sm font-semibold">
+        Your countdown is running at {expected}×{expected < 0 ? " (going up)" : ""}.
+      </p>
     ) : (
       <button
         disabled={pending}
-        onClick={() => run(() => setMySpeed(speed))}
+        onClick={() => run(syncMySpeed)}
         className="w-full rounded-lg bg-gray-900 p-3 font-bold text-white disabled:opacity-50"
       >
-        Your countdown is at {me.speed}×. Set it back to {speed}×
+        Your countdown is at {me.speed}×. Set it back to {expected}×
       </button>
     );
 
@@ -64,7 +68,7 @@ export function CurseBanner({ teamId }: { teamId: string }) {
               <b>To clear it:</b> {onMe.clearance}
             </p>
           )}
-          {speedStatus(2)}
+          <p className="text-sm">Your countdown runs 1× faster until you clear it.</p>
           {confirmClear ? (
             <div className="flex gap-2">
               <button
@@ -93,11 +97,12 @@ export function CurseBanner({ teamId }: { teamId: string }) {
         <div key={c.id} className="space-y-2 rounded-xl border-2 border-orange-400 bg-orange-50 p-4">
           <p>
             Your curse <b>{c.card_name}</b> on <b>{name(c.target_team)}</b> is active (since {time(c.started_at)}). Your
-            clock stands still until they clear it, then goes back to 1× automatically.
+            clock runs 1× slower until they clear it.
           </p>
-          {speedStatus(0)}
         </div>
       ))}
+
+      {(onMe || byMe.length > 0) && speedStatus}
     </section>
   );
 }

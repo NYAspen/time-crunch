@@ -91,6 +91,14 @@ const checks = [
     const { error } = await supabase.rpc("admin_set_speed", { p_team: team.id, new_speed: 0 });
     return !!error;
   }],
+  ["Match a team's speed to its curses (admin_sync_speed)", async () => {
+    const { error } = await supabase.rpc("admin_sync_speed", { p_team: team.id });
+    return !!error;
+  }],
+  ["Change the hand limit (admin_set_hand_limit)", async () => {
+    const { error } = await supabase.rpc("admin_set_hand_limit", { new_limit: 50 });
+    return !!error;
+  }],
   ["Revive or eliminate a team (admin_set_team_status)", async () => {
     const { error } = await supabase.rpc("admin_set_team_status", { p_team: team.id, new_status: "eliminated" });
     return !!error;

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { TeamList } from "@/components/TeamList";
 import { TimeHistory } from "@/components/TimeHistory";
 import { useLiveTable } from "@/components/useLiveTable";
-import { loadCardDraws, loadLedger } from "@/lib/queries";
+import { loadCardDraws, loadCards, loadGameState, loadLedger } from "@/lib/queries";
 import { CardHand } from "./CardHand";
 import { ChallengeBoard } from "./ChallengeBoard";
 
@@ -21,7 +21,11 @@ export function TeamTabs({ teamId }: { teamId: string }) {
   const [tab, setTab] = useState<TabId>("challenges");
   const { data: draws } = useLiveTable("card_draws", loadCardDraws);
   const { data: ledger } = useLiveTable("time_ledger", loadLedger);
+  const { data: cards } = useLiveTable("cards", loadCards);
+  const { data: game } = useLiveTable("game_state", loadGameState);
   const waitingDraws = draws?.filter((d) => d.team_id === teamId && d.status !== "done").length ?? 0;
+  const handSize = cards?.filter((c) => c.holder_team === teamId && c.status === "hand").length ?? 0;
+  const overLimit = !!game && handSize > game.hand_limit;
 
   return (
     <div className="space-y-3">
@@ -39,6 +43,15 @@ export function TeamTabs({ teamId }: { teamId: string }) {
             }`}
           >
             {t.label}
+            {t.id === "cards" && game && (
+              <span
+                className={`rounded-full px-1.5 text-xs tabular-nums ${
+                  overLimit ? "bg-red-600 text-white" : tab === t.id ? "bg-white/20" : "bg-gray-200 text-gray-700"
+                }`}
+              >
+                {handSize}/{game.hand_limit}
+              </span>
+            )}
             {t.id === "cards" && waitingDraws > 0 && (
               <span className="rounded-full bg-purple-600 px-1.5 text-xs text-white">{waitingDraws}</span>
             )}

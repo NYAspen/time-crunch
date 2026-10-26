@@ -14,6 +14,15 @@ export async function setMySpeed(speed: Speed): Promise<ActionResult> {
   return { ok: true, message: `Countdown speed set to ${speed}×.` };
 }
 
+// Sets the caller's speed to what its active curses add up to (worked out in
+// the database).
+export async function syncMySpeed(): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("sync_my_speed");
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: "Countdown speed now matches your curses." };
+}
+
 // The database function locks the challenge, so only the first claim wins.
 export async function claimChallenge(challengeId: string): Promise<ActionResult> {
   const supabase = createClient();

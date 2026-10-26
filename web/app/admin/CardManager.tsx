@@ -5,9 +5,17 @@ import { CardView } from "@/components/CardView";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { DeleteAllButton } from "@/components/DeleteAllButton";
 import { refreshAllLiveTables, useLiveTable, withRefresh } from "@/components/useLiveTable";
-import { loadCardDraws, loadCards, loadCardTypes, loadTeams } from "@/lib/queries";
+import { loadCardDraws, loadCards, loadCardTypes, loadGameState, loadTeams } from "@/lib/queries";
 import type { ActionResult, Card, CardType, PublicTeam } from "@/lib/types";
-import { changeCopies, deleteAllCards, grantDraw, importCards, moveCard, updateCardType } from "./adminActions";
+import {
+  changeCopies,
+  deleteAllCards,
+  grantDraw,
+  importCards,
+  moveCard,
+  setHandLimit,
+  updateCardType,
+} from "./adminActions";
 import { Notice } from "@/components/Notice";
 
 const EXAMPLE =
@@ -20,11 +28,13 @@ export function CardManager() {
   const { data: cards } = useLiveTable("cards", loadCards);
   const { data: draws } = useLiveTable("card_draws", loadCardDraws);
   const { data: teams } = useLiveTable("teams", loadTeams);
+  const { data: game } = useLiveTable("game_state", loadGameState);
+  const [limitResult, limitAction, limiting] = useActionState(withRefresh(setHandLimit), null);
   const [importResult, importAction, importing] = useActionState(withRefresh(importCards), null);
   const [drawResult, drawAction, granting] = useActionState(withRefresh(grantDraw), null);
 
   if (error) return <p className="text-red-700">Error: {error}</p>;
-  if (!types || !cards || !draws || !teams) return <p className="text-gray-500">Loading cards…</p>;
+  if (!types || !cards || !draws || !teams || !game) return <p className="text-gray-500">Loading cards…</p>;
 
   const inDeck = cards.filter((c) => c.status === "deck");
   const inPlay = cards.filter((c) => c.status === "hand" || c.status === "offered");
@@ -33,13 +43,30 @@ export function CardManager() {
   return (
     <CollapsibleSection
       title="Cards"
-      summary={`${inDeck.length} in deck · ${inPlay.length} held · ${draws.length} draws waiting`}
+      summary={`${inDeck.length} in deck · ${inPlay.length} held · hand limit ${game.hand_limit}`}
     >
       {inDeck.length === 0 && types.length > 0 && (
         <p className="rounded-lg bg-yellow-100 p-2 text-sm text-yellow-900">
           The deck is empty, so teams can&apos;t draw. Add copies or wait for cards to be used.
         </p>
       )}
+
+      <form action={limitAction} className="flex items-center gap-2">
+        <label className="text-sm">Hand limit (cards per team):</label>
+        <input
+          key={game.hand_limit}
+          name="limit"
+          type="number"
+          min={1}
+          max={50}
+          defaultValue={game.hand_limit}
+          className="w-20 rounded border p-2"
+        />
+        <button disabled={limiting} className="rounded bg-gray-800 px-3 py-2 text-sm text-white disabled:opacity-50">
+          Set
+        </button>
+      </form>
+      <Notice compact result={limitResult} />
 
       <details className="rounded-lg bg-gray-50 p-3">
         <summary className="font-medium">Import cards</summary>
@@ -92,9 +119,16 @@ export function CardManager() {
         <div className="mt-2 space-y-3">
           {teams.map((team) => {
             const held = inPlay.filter((c) => c.holder_team === team.id);
+            const inHand = held.filter((c) => c.status === "hand").length;
             return held.length ? (
               <div key={team.id}>
-                <div className="text-sm font-semibold">{team.name}</div>
+                <div className="text-sm font-semibold">
+                  {team.name}{" "}
+                  <span className={inHand > game.hand_limit ? "text-red-700" : "font-normal text-gray-500"}>
+                    ({inHand}/{game.hand_limit}
+                    {inHand > game.hand_limit ? ", over the limit" : ""})
+                  </span>
+                </div>
                 <ul className="space-y-1">
                   {held.map((card) => (
                     <HeldCardRow key={card.id} card={card} cardType={typeOf(card)} teams={teams} />

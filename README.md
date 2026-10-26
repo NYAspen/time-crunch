@@ -187,10 +187,13 @@ Keep the content in a Google Sheet and paste it into the admin page. Example fil
 | Mistakes | **Team time → Edit** to add or remove time or reset a team's speed. Use **Undo** in Time history, **Clear curse** in Curses, and **Move** in Cards → Cards held by teams. |
 | Emergencies | **Pause** freezes everything without costing anyone time. |
 
+**Hand limit:** teams can hold up to 5 cards by default. Change it in **Cards → Hand limit**. A team that goes over (by keeping a drawn card, or after you move a card to it or lower the limit) has to discard before it can draw or use cards.
+
 **How curses work:**
-- A team plays a curse card, picks a target and confirms they're in range.
-- The target's countdown runs at **2×** and the attacker's stops (**0×**) until the target taps **"curse cleared"**. Then both go back to **1×**.
-- Teams can also change their speed by hand to fix mistakes.
+- A team plays a curse card, picks a target and confirms they're in range. Curses can only be played during **Elimination**; in Preparation teams just keep them.
+- The target's countdown speeds up by **1×** and the attacker's slows down by **1×** until the target taps **"curse cleared"**. Then both shift back.
+- Curses stack: a team that is cursed *and* cursing one team runs at 1×. A team cursing two teams runs at −1×, so its clock goes **up**.
+- Teams can also change their speed by hand to fix mistakes. If a speed doesn't match the active curses, the curse banner and the admin's **Curses** section offer a one-tap fix.
 
 **Keep the admin page open** on one device during Elimination. It helps the site notice the moment a team's time runs out.
 

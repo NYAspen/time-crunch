@@ -26,6 +26,7 @@ export function Countdown({ game, team, clock, serverNow, size = "large" }: Prop
   let caption = "Banked time (not counting down yet)";
   if (team.status === "eliminated") caption = "Eliminated";
   else if (game.phase === "elimination" && game.is_paused) caption = "Paused";
+  else if (running && clock.speed < 0) caption = `Time left · going up at ${-clock.speed}×`;
   else if (running) caption = clock.speed === 1 ? "Time left" : `Time left · counting at ${clock.speed}×`;
 
   return (

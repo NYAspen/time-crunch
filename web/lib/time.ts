@@ -9,6 +9,20 @@ export function remainingMs(clock: TeamClock, serverNowMs: number) {
   return Math.max(clock.balance_ms - clock.speed * elapsed, 0);
 }
 
+// Each curse on a team adds 1×; each curse it has played subtracts 1×.
+export function curseSpeed(teamId: string, activeCurses: { target_team: string; attacker_team: string }[]) {
+  const on = activeCurses.filter((c) => c.target_team === teamId).length;
+  const by = activeCurses.filter((c) => c.attacker_team === teamId).length;
+  return 1 + on - by;
+}
+
+export function describeSpeed(speed: number) {
+  if (speed < 0) return `${speed}× — your clock goes up (you are cursing several teams)`;
+  if (speed === 0) return "0× — clock stopped";
+  if (speed === 1) return "1× — normal";
+  return `${speed}× — your clock drains ${speed}× as fast`;
+}
+
 // 3725000 -> "1:02:05"
 export function formatClock(ms: number) {
   const total = Math.ceil(ms / 1000);

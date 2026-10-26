@@ -56,6 +56,14 @@ export async function setTeamSpeed(teamId: string, speed: Speed): Promise<Action
   return { ok: true, message: `Speed set to ${speed}×.` };
 }
 
+// Sets a team's speed to what its active curses add up to.
+export async function syncTeamSpeed(teamId: string): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("admin_sync_speed", { p_team: teamId });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: "Speed now matches the team's curses." };
+}
+
 export async function setTeamStatus(teamId: string, status: "active" | "eliminated"): Promise<ActionResult> {
   const supabase = createClient();
   const { error } = await supabase.rpc("admin_set_team_status", { p_team: teamId, new_status: status });
@@ -164,6 +172,17 @@ export async function setBoardSize(_prev: ActionResult, formData: FormData): Pro
 // ---------------------------------------------------------------------------
 // Cards
 // ---------------------------------------------------------------------------
+
+export async function setHandLimit(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const limit = Number(formData.get("limit"));
+  if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
+    return { ok: false, message: "Hand limit must be a whole number from 1 to 50." };
+  }
+  const supabase = createClient();
+  const { error } = await supabase.rpc("admin_set_hand_limit", { new_limit: limit });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: `Teams can now hold ${limit} card${limit === 1 ? "" : "s"}.` };
+}
 
 // Expects rows pasted from a spreadsheet with headers:
 // name, type, copies, description, range, clearance, effect
