@@ -71,11 +71,11 @@ export async function setTeamStatus(teamId: string, status: "active" | "eliminat
   return { ok: true, message: status === "active" ? "Team is back in the game." : "Team eliminated." };
 }
 
-export async function undoTimeEntry(entryId: number): Promise<ActionResult> {
+export async function undoActivity(entryId: number): Promise<ActionResult> {
   const supabase = createClient();
-  const { error } = await supabase.rpc("admin_reverse_entry", { entry_id: entryId });
+  const { data, error } = await supabase.rpc("admin_undo_activity", { p_entry: entryId });
   if (error) return { ok: false, message: error.message };
-  return { ok: true, message: `Undid entry #${entryId}.` };
+  return { ok: true, message: (data as string | null) ?? "Undone." };
 }
 
 // ---------------------------------------------------------------------------
@@ -277,6 +277,27 @@ export async function grantDraw(_prev: ActionResult, formData: FormData): Promis
 // ---------------------------------------------------------------------------
 // Curses, deleting content, resetting the game
 // ---------------------------------------------------------------------------
+
+export async function adminRestartCurse(curseId: string): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("admin_restart_curse", { p_curse: curseId });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: "Curse restarted. Both teams' speeds were shifted again." };
+}
+
+export async function undoClaim(challengeId: string): Promise<ActionResult> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("admin_undo_claim", { p_challenge: challengeId });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: data ? String(data) : "Claim undone." };
+}
+
+export async function cancelDraw(drawId: string): Promise<ActionResult> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("admin_cancel_draw", { p_draw: drawId });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: "Draw cancelled." };
+}
 
 export async function adminClearCurse(curseId: string): Promise<ActionResult> {
   const supabase = createClient();

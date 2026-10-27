@@ -6,7 +6,7 @@ import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadCurses, loadTeams } from "@/lib/queries";
 import { curseSpeed } from "@/lib/time";
 import type { ActionResult } from "@/lib/types";
-import { adminClearCurse, syncTeamSpeed } from "./adminActions";
+import { adminClearCurse, adminRestartCurse, syncTeamSpeed } from "./adminActions";
 import { Notice } from "@/components/Notice";
 
 export function CurseList() {
@@ -19,6 +19,12 @@ export function CurseList() {
   if (!curses || !teams) return null;
   const name = (id: string) => teams.find((t) => t.id === id)?.name ?? "?";
   const active = curses.filter((c) => c.status === "active");
+  // Cleared in the last hour (that's all loadCurses returns), newest first.
+  const cleared = curses
+    .filter((c) => c.status === "cleared")
+    .sort((a, b) => (b.cleared_at ?? "").localeCompare(a.cleared_at ?? ""));
+  const time = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "?";
 
   const run = (action: () => Promise<ActionResult>) =>
     startTransition(async () => {
@@ -86,6 +92,43 @@ export function CurseList() {
           </li>
         ))}
       </ul>
+
+      {cleared.length > 0 && (
+        <details>
+          <summary className="font-medium">Recently cleared ({cleared.length})</summary>
+          <p className="mt-1 text-xs text-gray-500">
+            Cleared by mistake? Restart puts the curse back on and shifts both teams&apos; speeds again.
+          </p>
+          <ul className="mt-2 space-y-1">
+            {cleared.map((c) => (
+              <li key={c.id} className="flex flex-wrap items-center gap-2 rounded border p-2 text-sm">
+                <span className="min-w-0 flex-1">
+                  <b>{name(c.attacker_team)}</b> → <b>{name(c.target_team)}</b>: {c.card_name}, cleared{" "}
+                  {time(c.cleared_at)}
+                </span>
+                {confirming === c.id ? (
+                  <>
+                    <button
+                      disabled={pending}
+                      onClick={() => run(() => adminRestartCurse(c.id))}
+                      className="rounded bg-red-600 px-2 py-1 font-semibold text-white disabled:opacity-50"
+                    >
+                      Yes, restart
+                    </button>
+                    <button onClick={() => setConfirming(null)} className="rounded border bg-white px-2 py-1">
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => setConfirming(c.id)} className="rounded border bg-white px-2 py-1">
+                    Restart
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       <Notice compact result={result} />
     </CollapsibleSection>
   );

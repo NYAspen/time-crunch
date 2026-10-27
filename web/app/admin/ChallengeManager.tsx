@@ -12,6 +12,7 @@ import {
   importChallenges,
   setBoardSize,
   setChallengeStatus,
+  undoClaim,
   updateChallenge,
 } from "./adminActions";
 import { Notice } from "@/components/Notice";
@@ -105,15 +106,12 @@ export function ChallengeManager() {
           <summary className="font-medium">Claimed ({claimed.length})</summary>
           <ul className="mt-2 divide-y text-sm">
             {claimed.map((c) => (
-              <li key={c.id} className="py-2">
-                <b>{c.title}</b> — {teamName(c.claimed_by)}
-                {c.claimed_at &&
-                  ` at ${new Date(c.claimed_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
-              </li>
+              <ClaimedRow key={c.id} challenge={c} teamName={teamName(c.claimed_by)} />
             ))}
           </ul>
           <p className="mt-1 text-xs text-gray-500">
-            To reverse a claim&apos;s time bonus, use Undo in the time history.
+            Undo claim puts the challenge back on the board, takes back its time bonus and cancels its card draw if
+            the team hasn&apos;t drawn it yet.
           </p>
         </details>
       )}
@@ -250,6 +248,50 @@ function ChallengeRow({ challenge, onChanged }: { challenge: Challenge; onChange
           )}
         </div>
       )}
+      <Notice compact result={result} />
+    </li>
+  );
+}
+
+function ClaimedRow({ challenge, teamName }: { challenge: Challenge; teamName: string }) {
+  const [confirming, setConfirming] = useState(false);
+  const [result, setResult] = useState<ActionResult>(null);
+  const [pending, startTransition] = useTransition();
+
+  const undo = () =>
+    startTransition(async () => {
+      setResult(await undoClaim(challenge.id));
+      setConfirming(false);
+      refreshAllLiveTables();
+    });
+
+  return (
+    <li className="space-y-1 py-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="min-w-0 flex-1">
+          <b>{challenge.title}</b> — {teamName}
+          {challenge.claimed_at &&
+            ` at ${new Date(challenge.claimed_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
+        </span>
+        {confirming ? (
+          <>
+            <button
+              disabled={pending}
+              onClick={undo}
+              className="rounded bg-red-600 px-2 py-1 text-white disabled:opacity-50"
+            >
+              Yes, undo
+            </button>
+            <button onClick={() => setConfirming(false)} className="rounded border px-2 py-1">
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button onClick={() => setConfirming(true)} className="rounded border bg-white px-2 py-1">
+            Undo claim
+          </button>
+        )}
+      </div>
       <Notice compact result={result} />
     </li>
   );

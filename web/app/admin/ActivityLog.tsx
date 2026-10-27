@@ -1,35 +1,109 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
-import { useLiveTable } from "@/components/useLiveTable";
-import { loadActivityLog } from "@/lib/queries";
+import { Notice } from "@/components/Notice";
+import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
+import { loadActivityLog, loadTeams } from "@/lib/queries";
+import { formatDelta } from "@/lib/time";
+import type { ActionResult, ActivityLogEntry } from "@/lib/types";
+import { undoActivity } from "./adminActions";
 
 const PAGE_SIZE = 15;
 
-function describe(eventType: string, details: Record<string, unknown>) {
-  const detailText = Object.entries(details)
-    .map(([key, value]) => `${key}: ${String(value)}`)
-    .join(", ");
-  return detailText ? `${eventType.replaceAll("_", " ")} (${detailText})` : eventType.replaceAll("_", " ");
+// Entries the database can undo (admin_undo_activity, migration 0014).
+const UNDOABLE = new Set([
+  "challenge_claimed",
+  "card_used",
+  "curse_started",
+  "card_discarded",
+  "curse_cleared",
+  "time_adjusted",
+  "speed_changed",
+  "speed_set_by_admin",
+  "team_eliminated",
+]);
+
+function describe(entry: ActivityLogEntry, teamNames: Record<string, string>) {
+  const d = entry.details as Record<string, string | number | undefined>;
+  const team = (entry.team_id && teamNames[entry.team_id]) || d.name || "?";
+  const byAdmin = d.by === "admin" ? " (admin)" : "";
+  switch (entry.event_type) {
+    case "phase_changed":
+      return `Phase changed to ${d.to}`;
+    case "game_paused":
+      return "Game paused";
+    case "game_resumed":
+      return "Game resumed";
+    case "challenge_claimed":
+      return `${team} claimed "${d.challenge}" (${formatDelta(Number(d.minutes) * 60000)}, draw ${d.cards})`;
+    case "claim_undone":
+      return `Claim of "${d.challenge}" by ${team} undone${byAdmin}`;
+    case "cards_drawn":
+      return `${team} drew ${d.count} card(s) from "${d.source}"`;
+    case "card_kept":
+      return `${team} kept ${d.card}`;
+    case "card_used":
+      return `${team} used ${d.card}${d.target_team ? ` on ${d.target_team}` : ""}${d.target_card ? ` (copied ${d.target_card})` : ""}`;
+    case "curse_started":
+      return `${team} cursed ${d.target_team} with ${d.card}`;
+    case "card_discarded":
+      return `${team} discarded ${d.card}`;
+    case "curse_cleared":
+      return `${team} cleared the curse ${d.card}${byAdmin}`;
+    case "curse_restarted":
+      return `Curse ${d.card} on ${team} restarted${byAdmin}`;
+    case "action_undone":
+      return `${team} undid: ${d.action}${byAdmin}`;
+    case "time_adjusted":
+      return `${team}: ${formatDelta(Number(d.seconds) * 1000)} (admin${d.reason ? `: ${d.reason}` : ""})`;
+    case "time_entry_undone":
+      return `Time entry #${d.entry} undone (admin)`;
+    case "speed_changed":
+      return `${team} changed speed ${d.from}× → ${d.to}×`;
+    case "speed_set_by_admin":
+      return `${team} speed set ${d.from}× → ${d.to}× (admin)`;
+    case "team_eliminated":
+      return `${team} eliminated${byAdmin}`;
+    case "team_revived":
+      return `${team} back in the game${byAdmin}`;
+    case "card_moved_by_admin":
+      return `${d.card} moved to ${d.to_team ? (teamNames[d.to_team] ?? "?") : "the deck"} (admin)`;
+    case "draw_granted":
+      return `${team} given a draw of ${d.size} (admin)`;
+    case "draw_cancelled":
+      return `${team}'s draw from "${d.source}" cancelled (admin)`;
+    case "hand_limit_changed":
+      return `Hand limit set to ${d.limit}`;
+    case "board_size_changed":
+      return `Board size set to ${d.size}`;
+    case "game_reset":
+      return "Game reset";
+    default: {
+      const extra = Object.entries(d)
+        .map(([key, value]) => `${key}: ${String(value)}`)
+        .join(", ");
+      const label = entry.event_type.replaceAll("_", " ");
+      return extra ? `${label} (${extra})` : label;
+    }
+  }
 }
 
+// Everything that happened, newest first. Mistakes are undone from here.
 export function ActivityLog() {
   const { data: entries, error } = useLiveTable("activity_log", loadActivityLog);
+  const { data: teams } = useLiveTable("teams", loadTeams);
   const [shown, setShown] = useState(PAGE_SIZE);
 
+  const teamNames = Object.fromEntries((teams ?? []).map((t) => [t.id, t.name]));
+
   return (
-    <CollapsibleSection title="Activity log" summary="newest first">
+    <CollapsibleSection title="Activity log" summary="newest first, with Undo">
       {error && <p className="text-red-700">Error: {error}</p>}
       {entries?.length === 0 && <p className="text-gray-500">Nothing yet.</p>}
-      <ul className="space-y-1 text-sm">
+      <ul className="divide-y text-sm">
         {entries?.slice(0, shown).map((entry) => (
-          <li key={entry.id} className="flex gap-2">
-            <span className="shrink-0 font-mono text-gray-500">
-              {new Date(entry.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })}
-            </span>
-            <span>{describe(entry.event_type, entry.details)}</span>
-          </li>
+          <ActivityRow key={entry.id} entry={entry} text={describe(entry, teamNames)} />
         ))}
       </ul>
       {entries && entries.length > shown && (
@@ -38,5 +112,52 @@ export function ActivityLog() {
         </button>
       )}
     </CollapsibleSection>
+  );
+}
+
+function ActivityRow({ entry, text }: { entry: ActivityLogEntry; text: string }) {
+  const [confirming, setConfirming] = useState(false);
+  const [result, setResult] = useState<ActionResult>(null);
+  const [pending, startTransition] = useTransition();
+  const undone = entry.undone_at !== null;
+
+  const undo = () =>
+    startTransition(async () => {
+      setResult(await undoActivity(entry.id));
+      setConfirming(false);
+      refreshAllLiveTables();
+    });
+
+  return (
+    <li className="space-y-1 py-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="shrink-0 font-mono text-gray-500">
+          {new Date(entry.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })}
+        </span>
+        <span className={`min-w-0 flex-1 ${undone ? "text-gray-400 line-through" : ""}`}>{text}</span>
+        {undone && <span className="text-xs text-gray-500">undone</span>}
+        {!undone &&
+          UNDOABLE.has(entry.event_type) &&
+          (confirming ? (
+            <>
+              <button
+                disabled={pending}
+                onClick={undo}
+                className="rounded bg-red-600 px-2 py-1 text-xs text-white disabled:opacity-50"
+              >
+                Yes, undo
+              </button>
+              <button onClick={() => setConfirming(false)} className="rounded border px-2 py-1 text-xs">
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setConfirming(true)} className="rounded border bg-white px-2 py-1 text-xs">
+              Undo
+            </button>
+          ))}
+      </div>
+      <Notice compact result={result} />
+    </li>
   );
 }

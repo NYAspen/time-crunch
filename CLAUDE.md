@@ -361,19 +361,40 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - Bulk SQL statements use `where true`, because Supabase blocks UPDATE/DELETE without a WHERE clause.
   - `rls-check.mjs` now has 34 checks.
 
-- **Stacking curse speeds** (migration `0011_curse_speed_steps.sql`, 2026-10-23; **not yet run**):
+- **Stacking curse speeds** (migration `0011_curse_speed_steps.sql`, 2026-10-23; run):
   - Curses shift speeds by ±1 (`_shift_speed`) instead of setting them, so a team can curse and be cursed at once.
   - `teams.speed` is now allowed from −20 to 20.
   - `use_card` rejects curses outside Elimination. On the Cards tab, **Use** is greyed out for curses in Preparation and for every card while paused, with a one-line note above the hand (like claims). Discard still works while paused.
   - `_curse_speed(team)` = 1 + curses on the team − curses it played. `sync_my_speed()` (team) and `admin_sync_speed(team)` set a team's speed to that value. The curse banner and the admin Curses section show a Fix button when a speed doesn't match.
   - `rls-check.mjs` has 1 new check (35).
 
-- **Hand limit** (migration `0012_hand_limit.sql`, 2026-10-23; **not yet run**, run after 0011):
+- **Hand limit** (migration `0012_hand_limit.sql`, 2026-10-23; run):
   - `game_state.hand_limit` (default 5, 1–50), set with `admin_set_hand_limit`.
   - `_hand_excess(team)` / `_require_hand_within_limit(team)`: `open_draw` and `use_card` refuse while over the limit. `choose_card` and `discard_card` still work.
   - Team Cards tab: a "Cards in hand n / limit" meter at the top (one slot per card; grey, then orange when full, then red when over), a red over-limit box, and greyed-out Draw and Use buttons. The Cards tab button always shows n/limit, in red when over.
   - Admin Cards section: hand-limit setting, and n/limit per team under "Cards held by teams".
   - `rls-check.mjs` has 1 new check (36).
+
+- **Undo** (migration `0013_undo.sql`, 2026-10-26; run):
+  - Team undo window: for **60 s** after claiming, using a card, discarding or clearing a curse, a pinned **Undo** bar shows at the bottom of the team page (`app/team/UndoBar.tsx`, table `team_undos`, function `undo_action`).
+    - A claim can't be undone once the team has drawn from it.
+    - Undoing a use or discard fails if another team has drawn that card since.
+    - Undoing a curse removes it and shifts speeds back. Undoing a clear restarts the curse.
+  - Admin:
+    - **Undo claim** (Challenges → Claimed) puts the challenge back on the board (the replacement returns to the pool), reverses the time bonus, and cancels the draw if not yet drawn.
+    - **Cancel draw** (Cards → Waiting draws).
+    - **Give a card from the deck** (Cards), using `admin_move_card`.
+    - **Restart** a curse cleared in the last hour (Curses → Recently cleared).
+  - `card_draws.challenge_id` links a draw to its claim.
+  - `rls-check.mjs` has 4 new checks (40).
+
+- **Undo from the activity log** (migration `0014_activity_undo.sql`, 2026-10-26; **not yet run**, run after 0013):
+  - The admin **Time history** section was removed. The **Activity log** is the one admin history: readable entries with team names, amounts and speeds, an **Undo** button (with confirm) on undoable entries, and undone entries struck through.
+  - `admin_undo_activity(entry)` undoes: claims (challenge back, bonus reversed, draw cancelled), card uses and curses, discards, curse clears, admin time adjustments, speed changes (shifted back by the change, so later curses still count) and eliminations (team revived).
+  - An entry is matched to what it changed by team + timestamp (one action's writes share `now()`). Card uses and discards from before 0013 can't be undone this way; use Move.
+  - `activity_log.undone_at`. Team undos, Undo claim and curse Restart also mark the matching entry undone. Shared logic in `_apply_undo`.
+  - The team page keeps its own "Show my time history" link.
+  - `rls-check.mjs` has 1 new check (41).
 
 - **UI adjustments (2026-10-23):**
   - Messages use `components/Notice.tsx`: they fade after 5 s (8 s for errors) and have an × to close.
@@ -384,7 +405,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
     - sticky tabs: **Challenges | Cards | Teams**. The Cards tab shows a count of waiting draws, and the team's time history is a small link at the bottom of the Teams tab.
   - Admin page:
     - Reset game section is red (`CollapsibleSection danger`)
-    - Time history is its own section, just above the Activity log
+    - Time history was its own section above the Activity log (removed 2026-10-26; undo is in the Activity log)
     - home and admin pages keep the full phase banner
 
 ### Outstanding
@@ -440,7 +461,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - They have no location. Rewards are cards plus a time bonus.
   - The board holds 10 (admin-adjustable), with replacements drawn at random from the unused pool.
   - Teams can claim several in a row, in either phase, but not while the game is paused.
-  - Undoing a claim's time bonus uses Undo in the time history. There is no separate "unclaim".
+  - Undoing a claim's time bonus uses Undo in the time history. There is no separate "unclaim". (Superseded 2026-10-26: Undo claim, and Undo in the activity log.)
 - 2026-10-22: Cards (Stage 4):
   - The card list isn't decided yet. Types for now are curse and power-up, with room to add more.
   - Effects are manual, except **duplicate** (copy another card in your hand).
@@ -459,5 +480,10 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - 2026-10-23: **Curses now add and subtract speed instead of setting it** (migration 0011), so teams can curse each other and be cursed at once. Each curse adds +1× to the victim and −1× to the attacker, and clearing it reverses that. Manual changes are kept: a curse shifts from whatever the speed currently is.
   - Default chosen: a team cursing several teams goes below 0×, so its clock counts up (it gains time from each victim). Alternative if that's unwanted: stop at 0×.
   - Still one active curse per target (D10).
+- 2026-10-26: **Undo for teams and admin** (migration 0013).
+  - Teams get 60 seconds to undo their own claim, card use, discard or curse clear.
+  - The admin can undo claims, cancel draws, give a card back from the deck, and restart a cleared curse.
+  - Undoing a curse doesn't refund the extra seconds the victim drained (at most 60 s); the admin can add time if needed.
+- 2026-10-26: **Admin Time history removed; undo happens from the Activity log** (migration 0014). Undoing a challenge's time bonus there undoes the whole claim, including its draw.
 - 2026-10-23: **Hand limit added** (D8). Default 5, admin-adjustable. Over the limit, the team must discard before drawing or using cards.
 - 2026-10-23: **Curses can't be played during Preparation**, only during Elimination (D11). Teams can still draw and hold them in the morning.

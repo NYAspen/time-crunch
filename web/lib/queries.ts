@@ -10,6 +10,7 @@ import type {
   LedgerEntry,
   PublicTeam,
   TeamClock,
+  TeamUndo,
 } from "@/lib/types";
 
 // Browser-side reads. RLS decides what each user is allowed to see.
@@ -52,9 +53,9 @@ export async function loadLedger(): Promise<LedgerEntry[]> {
 export async function loadActivityLog(): Promise<ActivityLogEntry[]> {
   const { data, error } = await createClient()
     .from("activity_log")
-    .select("id, created_at, team_id, event_type, details")
-    .order("created_at", { ascending: false })
-    .limit(50);
+    .select("id, created_at, team_id, event_type, details, undone_at")
+    .order("id", { ascending: false })
+    .limit(300);
   if (error) throw new Error(error.message);
   return data;
 }
@@ -96,6 +97,20 @@ export async function loadCardDraws(): Promise<CardDraw[]> {
     .select("id, team_id, size, source, status, created_at")
     .neq("status", "done")
     .order("created_at");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Recent actions not yet undone; the screen hides the expired ones using the
+// server clock.
+export async function loadUndos(): Promise<TeamUndo[]> {
+  const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { data, error } = await createClient()
+    .from("team_undos")
+    .select("id, team_id, kind, label, created_at, expires_at")
+    .is("undone_at", null)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data;
 }

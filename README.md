@@ -184,7 +184,7 @@ Keep the content in a Google Sheet and paste it into the admin page. Example fil
 | Morning | Leave the game in **Preparation**. Teams claim challenges and bank time; no countdowns run. |
 | Lunch | Press **Pause**. Claims and card use stop, and the clocks freeze. |
 | After lunch | Press **Resume**, then switch to **Elimination** and confirm. Every team's countdown starts at the same moment. Teams with 0 time are eliminated straight away. |
-| Mistakes | **Team time → Edit** to add or remove time or reset a team's speed. Use **Undo** in Time history, **Clear curse** in Curses, and **Move** in Cards → Cards held by teams. |
+| Mistakes | Teams can undo their own claim, card use, discard or curse clear for **60 seconds** (Undo bar at the bottom of their page). After that, open the **Activity log** and tap **Undo** next to the entry: claims, card uses, curses, discards, curse clears, time changes, speed changes and eliminations can all be undone there. Also:<br>• **Team time → Edit** to add or remove time or reset a team's speed<br>• **Cards → Give a team a card from the deck**, **Waiting draws → Cancel draw**, or **Move** in Cards held by teams |
 | Emergencies | **Pause** freezes everything without costing anyone time. |
 
 **Hand limit:** teams can hold up to 5 cards by default. Change it in **Cards → Hand limit**. A team that goes over (by keeping a drawn card, or after you move a card to it or lower the limit) has to discard before it can draw or use cards.
@@ -206,7 +206,7 @@ Run these from inside the `web` folder. They use the keys in `.env.local`. Repla
 | Command | What it checks |
 |---|---|
 | `node --env-file=.env.local scripts/sync-check.mjs` | Checks that live updates reach browsers quickly. It should say **PASS ✓** with times well under 1000 ms. |
-| `node --env-file=.env.local scripts/rls-check.mjs "Team A" codeA` | Logs in as a team and tries 34 things a team must **not** be able to do. Every line should say **BLOCKED ✓**. Run it after every database change. |
+| `node --env-file=.env.local scripts/rls-check.mjs "Team A" codeA` | Logs in as a team and tries 41 things a team must **not** be able to do. Every line should say **BLOCKED ✓**. Run it after every database change. |
 | `node --env-file=.env.local scripts/race-claim.mjs "Team A" codeA "Team B" codeB` | Two teams claim the same challenge at the same instant. Exactly one should win. ⚠ This really claims 2 challenges. |
 | `node --env-file=.env.local scripts/race-draw.mjs "Team A" codeA "Team B" codeB` | Two teams draw cards at the same instant. No card should go to both. ⚠ Each team keeps a real card. |
 

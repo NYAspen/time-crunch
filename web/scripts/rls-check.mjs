@@ -99,6 +99,26 @@ const checks = [
     const { error } = await supabase.rpc("admin_set_hand_limit", { new_limit: 50 });
     return !!error;
   }],
+  ["Undo a claim (admin_undo_claim)", async () => {
+    const { error } = await supabase.rpc("admin_undo_claim", { p_challenge: "00000000-0000-0000-0000-000000000000" });
+    return !!error && /admin/i.test(error.message);
+  }],
+  ["Cancel a draw (admin_cancel_draw)", async () => {
+    const { error } = await supabase.rpc("admin_cancel_draw", { p_draw: "00000000-0000-0000-0000-000000000000" });
+    return !!error && /admin/i.test(error.message);
+  }],
+  ["Restart a curse (admin_restart_curse)", async () => {
+    const { error } = await supabase.rpc("admin_restart_curse", { p_curse: "00000000-0000-0000-0000-000000000000" });
+    return !!error && /admin/i.test(error.message);
+  }],
+  ["Undo an activity log entry (admin_undo_activity)", async () => {
+    const { error } = await supabase.rpc("admin_undo_activity", { p_entry: 1 });
+    return !!error && /admin/i.test(error.message);
+  }],
+  ["Undo another team's action (undo_action)", async () => {
+    const { error } = await supabase.rpc("undo_action", { p_undo: "00000000-0000-0000-0000-000000000000" });
+    return !!error;
+  }],
   ["Revive or eliminate a team (admin_set_team_status)", async () => {
     const { error } = await supabase.rpc("admin_set_team_status", { p_team: team.id, new_status: "eliminated" });
     return !!error;

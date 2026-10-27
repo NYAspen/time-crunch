@@ -6,8 +6,9 @@ import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { DeleteAllButton } from "@/components/DeleteAllButton";
 import { refreshAllLiveTables, useLiveTable, withRefresh } from "@/components/useLiveTable";
 import { loadCardDraws, loadCards, loadCardTypes, loadGameState, loadTeams } from "@/lib/queries";
-import type { ActionResult, Card, CardType, PublicTeam } from "@/lib/types";
+import type { ActionResult, Card, CardDraw, CardType, PublicTeam } from "@/lib/types";
 import {
+  cancelDraw,
   changeCopies,
   deleteAllCards,
   grantDraw,
@@ -114,6 +115,21 @@ export function CardManager() {
         <Notice compact result={drawResult} />
       </details>
 
+      <details className="rounded-lg bg-gray-50 p-3">
+        <summary className="font-medium">Give a team a card from the deck</summary>
+        <GiveFromDeck types={types} inDeck={inDeck} teams={teams} />
+      </details>
+
+      <details>
+        <summary className="font-medium">Waiting draws ({draws.length})</summary>
+        <ul className="mt-2 space-y-1">
+          {draws.length === 0 && <li className="text-sm text-gray-500">No draws waiting.</li>}
+          {draws.map((d) => (
+            <DrawRow key={d.id} draw={d} teamName={teams.find((t) => t.id === d.team_id)?.name ?? "?"} />
+          ))}
+        </ul>
+      </details>
+
       <details>
         <summary className="font-medium">Cards held by teams ({inPlay.length})</summary>
         <div className="mt-2 space-y-3">
@@ -161,6 +177,95 @@ export function CardManager() {
         action={deleteAllCards}
       />
     </CollapsibleSection>
+  );
+}
+
+// Undo a use or discard: hand a specific card type from the deck to a team.
+function GiveFromDeck({ types, inDeck, teams }: { types: CardType[]; inDeck: Card[]; teams: PublicTeam[] }) {
+  const [typeId, setTypeId] = useState("");
+  const [teamId, setTeamId] = useState("");
+  const [result, setResult] = useState<ActionResult>(null);
+  const [pending, startTransition] = useTransition();
+  const available = types.filter((t) => inDeck.some((c) => c.type_id === t.id));
+
+  const give = () =>
+    startTransition(async () => {
+      const card = inDeck.find((c) => c.type_id === typeId);
+      setResult(card ? await moveCard(card.id, teamId) : { ok: false, message: "No copy of that card is in the deck." });
+      setTypeId("");
+      refreshAllLiveTables();
+    });
+
+  return (
+    <div className="mt-2 space-y-2">
+      <p className="text-sm text-gray-600">
+        Use this to give back a card that was used or discarded by mistake. It goes straight into the team&apos;s hand.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <select
+          value={typeId}
+          onChange={(e) => setTypeId(e.target.value)}
+          className="min-w-0 flex-1 rounded border bg-white p-2"
+        >
+          <option value="">Card…</option>
+          {available.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name} ({inDeck.filter((c) => c.type_id === t.id).length} in deck)
+            </option>
+          ))}
+        </select>
+        <select
+          value={teamId}
+          onChange={(e) => setTeamId(e.target.value)}
+          className="min-w-0 flex-1 rounded border bg-white p-2"
+        >
+          <option value="">Team…</option>
+          {teams.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+        <button
+          disabled={pending || !typeId || !teamId}
+          onClick={give}
+          className="rounded bg-gray-800 px-3 text-sm text-white disabled:opacity-40"
+        >
+          Give
+        </button>
+      </div>
+      <Notice compact result={result} />
+    </div>
+  );
+}
+
+function DrawRow({ draw, teamName }: { draw: CardDraw; teamName: string }) {
+  const [result, setResult] = useState<ActionResult>(null);
+  const [pending, startTransition] = useTransition();
+
+  const cancel = () =>
+    startTransition(async () => {
+      setResult(await cancelDraw(draw.id));
+      refreshAllLiveTables();
+    });
+
+  return (
+    <li className="rounded border p-2 text-sm">
+      <div className="flex items-center gap-2">
+        <span className="min-w-0 flex-1">
+          <b>{teamName}</b>: draw {draw.size} ({draw.source})
+          {draw.status === "open" && <span className="text-purple-700"> (cards showing)</span>}
+        </span>
+        <button
+          disabled={pending}
+          onClick={cancel}
+          className="rounded border bg-white px-2 py-1 disabled:opacity-50"
+        >
+          Cancel draw
+        </button>
+      </div>
+      <Notice compact result={result} />
+    </li>
   );
 }
 

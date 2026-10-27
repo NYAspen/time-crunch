@@ -78,6 +78,15 @@ export async function discardCard(cardId: string): Promise<ActionResult> {
   return { ok: true, message: "Card discarded back into the deck." };
 }
 
+// Undo one of the team's own actions from the last 60 seconds (checked in the
+// database).
+export async function undoAction(undoId: string): Promise<ActionResult> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("undo_action", { p_undo: undoId });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: data ? String(data) : "Undone." };
+}
+
 // Only the cursed team can clear its own curse (checked in the database).
 export async function clearCurse(curseId: string): Promise<ActionResult> {
   const supabase = createClient();

@@ -7,6 +7,7 @@ import { logout } from "../actions";
 import { CurseBanner } from "./CurseBanner";
 import { TeamClockPanel } from "./TeamClockPanel";
 import { TeamTabs } from "./TeamTabs";
+import { UndoBar } from "./UndoBar";
 
 export default function TeamPage() {
   return (
@@ -38,6 +39,8 @@ async function TeamView() {
       <TeamClockPanel teamId={team.id} />
       <CurseBanner teamId={team.id} />
       <TeamTabs teamId={team.id} />
+      {/* Last, so its spacer sits at the bottom of the page, under the tabs. */}
+      <UndoBar teamId={team.id} />
     </>
   );
 }

@@ -110,6 +110,16 @@ export type CardDraw = {
   created_at: string;
 };
 
+// A recent team action the team can still undo (migration 0013).
+export type TeamUndo = {
+  id: string;
+  team_id: string;
+  kind: "claim" | "use" | "discard" | "clear_curse";
+  label: string;
+  created_at: string;
+  expires_at: string;
+};
+
 // Teams see curses they played or that are on them (RLS); admins see all.
 export type Curse = {
   id: string;
@@ -129,6 +139,7 @@ export type ActivityLogEntry = {
   team_id: string | null;
   event_type: string;
   details: Record<string, unknown>;
+  undone_at: string | null;
 };
 
 export type ActionResult = { ok: boolean; message: string } | null;
