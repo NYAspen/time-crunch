@@ -2,6 +2,7 @@
 // phone (no trip through the Vercel server), which keeps the game fast. Each
 // database function checks who is calling, so this is just as secure: a team
 // can only ever act as itself, on its own cards, while it is active.
+import { drawLabel } from "@/components/ChallengeRewards";
 import { createClient } from "@/lib/supabase/client";
 import type { ActionResult, Speed } from "@/lib/types";
 
@@ -32,9 +33,9 @@ export async function claimChallenge(challengeId: string): Promise<ActionResult>
   const { title, minutes, cards } = data as { title: string; minutes: number; cards: number };
   const rewards = [
     minutes > 0 ? `+${minutes} min` : null,
-    cards > 0 ? `a draw of ${cards} card${cards === 1 ? "" : "s"} (open the Cards tab to draw)` : null,
+    cards > 0 ? `${drawLabel(cards)} (open the Cards tab to draw)` : null,
   ].filter(Boolean);
-  return { ok: true, message: `You claimed "${title}"!${rewards.length ? ` ${rewards.join(", ")}.` : ""}` };
+  return { ok: true, message: `You completed "${title}"!${rewards.length ? ` ${rewards.join(", ")}.` : ""}` };
 }
 
 // ---------------------------------------------------------------------------

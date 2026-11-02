@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { CardView } from "@/components/CardView";
+import { drawLabel } from "@/components/ChallengeRewards";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadCardDraws, loadCards, loadCardTypes, loadGameState, loadTeams } from "@/lib/queries";
 import type { ActionResult, Card, CardType, PublicTeam } from "@/lib/types";
@@ -75,7 +76,7 @@ export function CardHand({ teamId }: { teamId: string }) {
               onClick={() => run(openDraw)}
               className="w-full rounded-lg bg-purple-600 p-3 font-semibold text-white disabled:opacity-50"
             >
-              Draw {waiting[0].size} card{waiting[0].size === 1 ? "" : "s"} ({waiting[0].source})
+              {drawLabel(waiting[0].size).replace(/^d/, "D")} ({waiting[0].source})
             </button>
           </div>
         )
@@ -99,7 +100,7 @@ export function CardHand({ teamId }: { teamId: string }) {
       )}
 
       {hand.length === 0 ? (
-        <p className="text-gray-500">No cards in your hand yet. Claim challenges to draw cards.</p>
+        <p className="text-gray-500">No cards in your hand yet. Complete challenges to draw cards.</p>
       ) : (
         <ul className="space-y-2">
           {hand.map((card) => {

@@ -1,5 +1,10 @@
 import type { Challenge } from "@/lib/types";
 
+// "draw 3 pick 1"; a single card goes straight into the hand, so it's just "draw 1 card".
+export function drawLabel(cards: number) {
+  return cards === 1 ? "draw 1 card" : `draw ${cards} pick 1`;
+}
+
 export function ChallengeRewards({ challenge }: { challenge: Pick<Challenge, "reward_cards" | "reward_minutes"> }) {
   return (
     <div className="flex flex-wrap gap-1 text-sm">
@@ -10,7 +15,7 @@ export function ChallengeRewards({ challenge }: { challenge: Pick<Challenge, "re
       )}
       {challenge.reward_cards > 0 && (
         <span className="rounded-full bg-purple-100 px-2 py-0.5 font-semibold text-purple-800">
-          draw {challenge.reward_cards} card{challenge.reward_cards === 1 ? "" : "s"}
+          {drawLabel(challenge.reward_cards)}
         </span>
       )}
     </div>

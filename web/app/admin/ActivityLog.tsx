@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { drawLabel } from "@/components/ChallengeRewards";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { Notice } from "@/components/Notice";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
@@ -36,7 +37,7 @@ function describe(entry: ActivityLogEntry, teamNames: Record<string, string>) {
     case "game_resumed":
       return "Game resumed";
     case "challenge_claimed":
-      return `${team} claimed "${d.challenge}" (${formatDelta(Number(d.minutes) * 60000)}, draw ${d.cards})`;
+      return `${team} completed "${d.challenge}" (${formatDelta(Number(d.minutes) * 60000)}, ${drawLabel(Number(d.cards))})`;
     case "claim_undone":
       return `Claim of "${d.challenge}" by ${team} undone${byAdmin}`;
     case "cards_drawn":

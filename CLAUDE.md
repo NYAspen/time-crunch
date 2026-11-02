@@ -486,4 +486,5 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - Undoing a curse doesn't refund the extra seconds the victim drained (at most 60 s); the admin can add time if needed.
 - 2026-10-26: **Admin Time history removed; undo happens from the Activity log** (migration 0014). Undoing a challenge's time bonus there undoes the whole claim, including its draw.
 - 2026-10-23: **Hand limit added** (D8). Default 5, admin-adjustable. Over the limit, the team must discard before drawing or using cards.
+- 2026-11-02: **Wording:** teams tap **Completed** instead of Claim, and card rewards read "draw N pick 1" (or "draw 1 card"). This is a text change only; the database still calls it a claim, and server messages (errors, the Undo bar) still say "claim".
 - 2026-10-23: **Curses can't be played during Preparation**, only during Elimination (D11). Teams can still draw and hold them in the morning.

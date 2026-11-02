@@ -32,7 +32,7 @@ export function ChallengeBoard({ teamId }: { teamId: string }) {
 
       <Notice result={result} />
       {game.is_paused && (
-        <p className="text-sm text-gray-600">The game is paused. Claims open again when it resumes.</p>
+        <p className="text-sm text-gray-600">The game is paused. Challenges can be completed again when it resumes.</p>
       )}
       {active.length === 0 && <p className="text-gray-500">No challenges on the board right now.</p>}
 
@@ -52,11 +52,11 @@ export function ChallengeBoard({ teamId }: { teamId: string }) {
 
       {claimed.length > 0 && (
         <details className="rounded-xl border bg-white p-4">
-          <summary className="font-semibold">Claimed challenges ({claimed.length})</summary>
+          <summary className="font-semibold">Completed challenges ({claimed.length})</summary>
           <ul className="mt-2 divide-y text-sm">
             {claimed.map((c) => (
               <li key={c.id} className="py-2">
-                <b>{c.title}</b> — claimed by {c.claimed_by === teamId ? "your team" : teamName(c.claimed_by)}
+                <b>{c.title}</b> — completed by {c.claimed_by === teamId ? "your team" : teamName(c.claimed_by)}
               </li>
             ))}
           </ul>
@@ -100,7 +100,7 @@ function ChallengeCard({
               onClick={claim}
               className="flex-1 rounded-lg bg-orange-600 p-3 font-semibold text-white disabled:opacity-50"
             >
-              {pending ? "Claiming…" : "Yes, claim it"}
+              {pending ? "Saving…" : "Yes, we completed it"}
             </button>
             <button
               disabled={pending}
@@ -117,7 +117,7 @@ function ChallengeCard({
           onClick={() => setConfirming(true)}
           className="w-full rounded-lg bg-blue-600 p-3 font-semibold text-white disabled:opacity-40"
         >
-          Claim
+          Completed
         </button>
       )}
     </li>
