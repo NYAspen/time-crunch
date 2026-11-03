@@ -4,15 +4,15 @@
 // can only ever act as itself, on its own cards, while it is active.
 import { drawLabel } from "@/components/ChallengeRewards";
 import { createClient } from "@/lib/supabase/client";
-import type { ActionResult, Speed } from "@/lib/types";
+import type { ActionResult } from "@/lib/types";
 
-// The database function checks that the caller is an active team and only
-// ever changes the caller's own speed.
-export async function setMySpeed(speed: Speed): Promise<ActionResult> {
+// Moves the caller's own speed up or down (the arrows send several taps as one
+// change). The database function checks that the caller is an active team.
+export async function stepMySpeed(delta: number): Promise<{ result: ActionResult; speed: number | null }> {
   const supabase = createClient();
-  const { error } = await supabase.rpc("set_my_speed", { new_speed: speed });
-  if (error) return { ok: false, message: error.message };
-  return { ok: true, message: `Countdown speed set to ${speed}×.` };
+  const { data, error } = await supabase.rpc("step_my_speed", { p_delta: delta });
+  if (error) return { result: { ok: false, message: error.message }, speed: null };
+  return { result: { ok: true, message: `Countdown speed set to ${data}×.` }, speed: data as number };
 }
 
 // Sets the caller's speed to what its active curses add up to (worked out in

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { CardView } from "@/components/CardView";
 import { drawLabel } from "@/components/ChallengeRewards";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
-import { loadCardDraws, loadCards, loadCardTypes, loadGameState, loadTeams } from "@/lib/queries";
+import { loadCardDraws, loadCards, loadCardTypes, loadCurses, loadGameState, loadTeams } from "@/lib/queries";
 import { parseEffect, type ActionResult, type Card, type CardType, type PublicTeam } from "@/lib/types";
 import { chooseCard, discardCard, openDraw, playCard } from "./gameActions";
 import { Notice } from "@/components/Notice";
@@ -16,6 +16,7 @@ export function CardHand({ teamId }: { teamId: string }) {
   const { data: types } = useLiveTable("card_types", loadCardTypes);
   const { data: teams } = useLiveTable("teams", loadTeams);
   const { data: game } = useLiveTable("game_state", loadGameState);
+  const { data: curses } = useLiveTable("curses", loadCurses);
   const [result, setResult] = useState<ActionResult>(null);
   const [pending, startTransition] = useTransition();
 
@@ -29,6 +30,10 @@ export function CardHand({ teamId }: { teamId: string }) {
   const offered = openDrawRow ? mine.filter((c) => c.status === "offered" && c.draw_id === openDrawRow.id) : [];
   const waiting = draws.filter((d) => d.team_id === teamId && d.status === "pending");
   const otherTeams = teams.filter((t) => t.id !== teamId && t.status === "active");
+  // Only one curse at a time from this team on each other team (checked in the database too).
+  const cursing = new Set(
+    (curses ?? []).filter((c) => c.status === "active" && c.attacker_team === teamId).map((c) => c.target_team),
+  );
   // Curses can only be played during Elimination (checked in the database too).
   // Steals work in either phase.
   const attacksAllowed = game.phase === "elimination";
@@ -134,6 +139,7 @@ export function CardHand({ teamId }: { teamId: string }) {
                 cardType={t}
                 hand={hand}
                 otherTeams={otherTeams}
+                cursing={cursing}
                 canUse={!eliminated && !game.is_paused && excess === 0 && (attacksAllowed || !isAttack(t))}
                 canDiscard={!eliminated && excess > 0}
                 typeOf={typeOf}
@@ -189,6 +195,7 @@ function HandCard({
   cardType,
   hand,
   otherTeams,
+  cursing,
   canUse,
   canDiscard,
   typeOf,
@@ -199,6 +206,7 @@ function HandCard({
   cardType: CardType;
   hand: Card[];
   otherTeams: PublicTeam[];
+  cursing: Set<string>; // teams this team already has a curse on
   canUse: boolean; // not while paused or over the hand limit; curses only in Elimination (all checked in the database too)
   canDiscard: boolean; // Discard only shows while the hand is over the limit
   typeOf: (card: Card) => CardType | undefined;
@@ -270,11 +278,15 @@ function HandCard({
                     className="w-full rounded border bg-white px-1 py-2"
                   >
                     <option value="">Pick a team</option>
-                    {otherTeams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
+                    {otherTeams.map((t) => {
+                      const taken = isCurse && cursing.has(t.id);
+                      return (
+                        <option key={t.id} value={t.id} disabled={taken}>
+                          {t.name}
+                          {taken ? " (already cursed by you)" : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                   <label className="flex items-start gap-1.5 text-xs">
                     <input

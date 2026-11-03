@@ -4,7 +4,7 @@
 // Managing team LOGINS needs the secret key, so that stays in ./actions.ts.
 import { parseTable } from "@/lib/csv";
 import { createClient } from "@/lib/supabase/client";
-import { CARD_EFFECTS_HELP, CARD_TYPES, parseEffect, PHASES, SPEEDS, type ActionResult, type Phase, type Speed } from "@/lib/types";
+import { CARD_EFFECTS_HELP, CARD_TYPES, parseEffect, PHASES, type ActionResult, type Phase } from "@/lib/types";
 import { deleteAllTeams } from "./actions";
 
 // ---------------------------------------------------------------------------
@@ -48,12 +48,15 @@ export async function adjustTime(teamId: string, formData: FormData): Promise<Ac
   return { ok: true, message: `${minutes > 0 ? "Added" : "Removed"} ${Math.abs(minutes)} min.` };
 }
 
-export async function setTeamSpeed(teamId: string, speed: Speed): Promise<ActionResult> {
-  if (!SPEEDS.includes(speed)) return { ok: false, message: "Unknown speed." };
+// Moves a team's speed up or down (the arrows send several taps as one change).
+export async function stepTeamSpeed(
+  teamId: string,
+  delta: number,
+): Promise<{ result: ActionResult; speed: number | null }> {
   const supabase = createClient();
-  const { error } = await supabase.rpc("admin_set_speed", { p_team: teamId, new_speed: speed });
-  if (error) return { ok: false, message: error.message };
-  return { ok: true, message: `Speed set to ${speed}×.` };
+  const { data, error } = await supabase.rpc("admin_step_speed", { p_team: teamId, p_delta: delta });
+  if (error) return { result: { ok: false, message: error.message }, speed: null };
+  return { result: { ok: true, message: `Speed set to ${data}×.` }, speed: data as number };
 }
 
 // Sets a team's speed to what its active curses add up to.

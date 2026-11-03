@@ -10,9 +10,11 @@ type Props = {
   clock: TeamClock;
   serverNow: number;
   size?: "large" | "small";
+  side?: React.ReactNode; // shown inside the large box, right of the time (the team's speed arrows)
+  children?: React.ReactNode; // shown inside the large box, under the time
 };
 
-export function Countdown({ game, team, clock, serverNow, size = "large" }: Props) {
+export function Countdown({ game, team, clock, serverNow, size = "large", side, children }: Props) {
   const remaining = remainingMs(clock, serverNow);
   const running = clock.running;
   useEliminationCheck(game.phase === "elimination" && team.status === "active" && remaining <= 0);
@@ -47,8 +49,26 @@ export function Countdown({ game, team, clock, serverNow, size = "large" }: Prop
         team.status === "eliminated" ? "bg-gray-300 text-gray-700" : running ? "bg-gray-900 text-white" : "bg-white"
       }`}
     >
-      <div className="tc-caption text-sm uppercase tracking-wide opacity-80">{caption}</div>
-      <div className="tc-digits text-5xl font-bold">{time}</div>
+      {side ? (
+        // Caption and time on the left; the speed column on the right, centred
+        // top-to-bottom against both.
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="tc-caption text-sm uppercase tracking-wide opacity-80">{caption}</div>
+            {/* Smaller on narrow phones so the time and the speed fit side by side. */}
+            <div className="tc-digits font-bold" style={{ fontSize: "clamp(2.25rem, 12.5vw, 3.75rem)" }}>
+              {time}
+            </div>
+          </div>
+          {side}
+        </div>
+      ) : (
+        <>
+          <div className="tc-caption text-sm uppercase tracking-wide opacity-80">{caption}</div>
+          <div className="tc-digits text-5xl font-bold">{time}</div>
+        </>
+      )}
+      {children}
     </div>
   );
 }

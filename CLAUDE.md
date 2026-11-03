@@ -75,10 +75,10 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 | D7 | Card types for now are **curse** and **power-up** (the card list is still being planned). Time cards aren't included, because challenges give time bonuses directly. | New types or effects can be added later with a small database change. |
 | D8 | **Hand limit: 5 cards by default**; the admin can set 1–50 (Admin → Cards). Offered cards don't count. A team over the limit can't draw or use cards until it discards down to the limit; claims still work. | Added 2026-10-23 (migration 0012). |
 | D9 | Each active curse adds **+1×** to the victim's speed and **−1×** to the attacker's (from 1×: victim 2×, attacker 0×). Curses stack, so a team can curse and be cursed at once. A team cursing two teams runs at −1×, so its clock goes up. | Changed from fixed speeds on 2026-10-23 (migration 0011). |
-| D10 | A team can have at most one active curse at a time. | |
+| D10 | A team can have several curses on it and play several, but **only one per pair**: team A can have at most one active curse on team B (B can still curse A at the same time). | Changed from one curse per target on 2026-11-03 (migration 0017). |
 | D11 | Curses can only be **played** during Elimination (blocked in Preparation, checked by the server). Steals work in either phase. No curse effects apply while paused. When a team is eliminated, every curse it played or suffers ends automatically and the other team's speed shifts back. | Play-blocking added 2026-10-23 (migration 0011). Steals in Preparation and curses ending at elimination from 2026-11-03 (migration 0016). |
 | D12 | Range is honor-system in Tier 1: the attacker ticks "Range condition met: <the card's range text>" when playing the card. A range need not be "near the target" (e.g. near a place, or the team furthest from you). | Automatic checking is Tier 2. |
-| D13 | Teams can set their countdown speed by hand to **0×, 1× or 2×**. 1× is normal, 0× stops the clock, and 2× drains double. Curses shift speeds by 1 (D9), so the actual speed can be anywhere from −20× to 20×; below 0 the clock goes up. Speed only has an effect during Elimination when the game isn't paused. Manual changes are for fixing mistakes. | Every change is logged, and every team's speed is shown publicly. |
+| D13 | Teams change their countdown speed by hand with **▼ / ▲ arrows**, 1× per tap, anywhere from −20× to 20×. 1× is normal, 0× stops the clock, 2× drains double, below 0 the clock goes up. Curses shift speeds by 1 (D9). Speed only has an effect during Elimination when the game isn't paused. Manual changes are for fixing mistakes. | Every change is logged, and every team's speed is shown publicly. Arrows replaced the 0×/1×/2× buttons on 2026-11-03 (migration 0017). |
 
 ## 4. Requirements by tier
 
@@ -438,6 +438,16 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - A steal on a team with no cards shows a small "Steal failed" note on the steal card; the card stays in the hand.
   - The team page shows the same big yellow "Game paused" box as the admin page (`PausedBox` in `components/PhaseBanner.tsx`) instead of a small badge.
 
+- **Curse pairs and speed arrows** (migration `0017_curse_pairs_speed_arrows.sql`, 2026-11-03; **not run yet**):
+  - The unique index is now one active curse per (attacker, target) pair. `use_card` and `_restart_curse` check the pair.
+  - The curse banner lists every curse on the team, each with its own Task done / Veto. The team picker on a curse card greys out teams you already curse.
+  - `step_my_speed(±1)` and `admin_step_speed(team, ±1)` replace the 0×/1×/2× buttons (`components/SpeedStepper.tsx`, −20× to 20×). The team's arrows sit inside the countdown box. `set_my_speed` / `admin_set_speed` still exist but the app no longer calls them.
+  - `rls-check.mjs` has 1 new check.
+- **Speed arrows and curse signs, round 2** (migration `0018_speed_step_batch.sql`, 2026-11-03; **not run yet**, run after 0017):
+  - The team's ▲ / speed / ▼ column sits right of the countdown digits (`Countdown` `side` slot; the digits shrink on narrow phones).
+  - `SpeedStepper` shows each tap at once, then sends the taps together after a 0.45 s pause as one change (`step_my_speed` / `admin_step_speed` now take any delta), so fast tapping doesn't lag and the log gets one line.
+  - Curse signs: each curse on the team is a red sign ("Cursed by …", card name, +1× tag, To clear, since time, Task done / Veto). Curses the team played are one orange "Your curses (n)" sign with a row per curse (target, what they must do, since time).
+
 ### Outstanding
 - Full-loop test on several phones.
 - Stages 2–5 (Tier 1) by Nov 1. Then the playtest, Tier 2 if there is time, and the rehearsal (section 2).
@@ -520,4 +530,5 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - 2026-11-02: **Wording:** teams tap **Completed** instead of Claim, and card rewards read "draw N pick 1" (or "draw 1 card"). This is a text change only; the database still calls it a claim, and server messages (errors, the Undo bar) still say "claim".
 - 2026-11-02: **Discard only shows when a hand is over the limit** (team Cards tab). Otherwise cards can only be used. The database still allows discarding at any time, and the admin can still move cards back to the deck.
 - 2026-11-03: **Challenges are Preparation only** (board hidden in Elimination); **steals allowed in Preparation**; **an eliminated team's curses end** (no time transfer after elimination; the few seconds between hitting zero and the server noticing are not refunded). Challenges get a location and "draw N pick K" rewards (migration 0016).
+- 2026-11-03: **Several curses per team, one per pair of teams** (D10), and **speed arrows** (D13): teams step their own speed 1× at a time, −20× to 20×, instead of picking 0×/1×/2×. Default chosen: teams can step below 0× by hand too (logged and public). Alternative if abused: limit teams' own arrows to 0×–2× and leave the full range to the admin.
 - 2026-10-23: **Curses can't be played during Preparation**, only during Elimination (D11). Teams can still draw and hold them in the morning.

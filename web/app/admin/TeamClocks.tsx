@@ -6,10 +6,10 @@ import { Countdown } from "@/components/Countdown";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { useServerNow } from "@/components/useServerNow";
 import { loadClocks, loadGameState, loadTeams } from "@/lib/queries";
-import { SPEEDS, type ActionResult, type GameState, type PublicTeam, type TeamClock } from "@/lib/types";
-import { adjustTime, setTeamSpeed, setTeamStatus } from "./adminActions";
+import type { ActionResult, GameState, PublicTeam, TeamClock } from "@/lib/types";
+import { adjustTime, setTeamStatus, stepTeamSpeed } from "./adminActions";
 import { Notice } from "@/components/Notice";
-import { speedButtonClass } from "@/components/speedStyles";
+import { SpeedStepper } from "@/components/SpeedStepper";
 
 export function TeamClocks() {
   const { data: game } = useLiveTable("game_state", loadGameState);
@@ -110,18 +110,17 @@ function ClockRow({
             </button>
           </form>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm">Speed:</span>
-            {SPEEDS.map((speed) => (
-              <button
-                key={speed}
-                disabled={pending || speed === team.speed}
-                onClick={() => run(() => setTeamSpeed(team.id, speed))}
-                className={`flex-1 p-2 text-sm ${speedButtonClass(speed, speed === team.speed)}`}
-              >
-                {speed}×
-              </button>
-            ))}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm">Speed (each tap moves 1×):</span>
+            <SpeedStepper
+              speed={team.speed}
+              onChange={async (delta) => {
+                const { result, speed } = await stepTeamSpeed(team.id, delta);
+                setResult(result);
+                onChanged();
+                return speed;
+              }}
+            />
           </div>
 
           {confirmStatus ? (

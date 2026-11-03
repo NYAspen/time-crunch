@@ -24,10 +24,6 @@ export type GameState = {
   hand_limit: number; // most cards a team may hold (migration 0012)
 };
 
-// The speeds teams and the admin can pick by hand. Curses shift a team's speed
-// by 1 each (migration 0011), so the actual speed can be below 0 or above 2.
-export const SPEEDS = [0, 1, 2] as const;
-export type Speed = (typeof SPEEDS)[number];
 
 export type PublicTeam = {
   id: string;

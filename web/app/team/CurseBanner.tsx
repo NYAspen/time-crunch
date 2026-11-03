@@ -17,7 +17,8 @@ export function CurseBanner({ teamId }: { teamId: string }) {
   const { data: curses } = useLiveTable("curses", loadCurses);
   const { data: teams } = useLiveTable("teams", loadTeams);
   const [result, setResult] = useState<ActionResult>(null);
-  const [confirm, setConfirm] = useState<"clear" | "veto" | null>(null);
+  // Which curse's button was tapped (a team can have several curses on it).
+  const [confirm, setConfirm] = useState<{ id: string; kind: "clear" | "veto" } | null>(null);
   const [pending, startTransition] = useTransition();
   const hasVeto = useHasVeto(teamId);
 
@@ -26,10 +27,10 @@ export function CurseBanner({ teamId }: { teamId: string }) {
   if (!me || me.status !== "active") return null;
 
   const name = (id: string) => teams.find((t) => t.id === id)?.name ?? "another team";
-  const onMe = curses.find((c) => c.status === "active" && c.target_team === teamId);
+  const onMe = curses.filter((c) => c.status === "active" && c.target_team === teamId);
   const byMe = curses.filter((c) => c.status === "active" && c.attacker_team === teamId);
 
-  if (!onMe && byMe.length === 0 && !result) return null;
+  if (onMe.length === 0 && byMe.length === 0 && !result) return null;
 
   const run = (action: () => Promise<ActionResult>) =>
     startTransition(async () => {
@@ -51,77 +52,120 @@ export function CurseBanner({ teamId }: { teamId: string }) {
     </button>
   );
 
-  // Kept short: just the curse and the team, plus what the cursed team needs
-  // to clear it.
+  // Curses on this team: one red sign each, with what to do to clear it.
+  // Curses this team played: one orange sign listing them all.
   return (
     <section className="space-y-2">
       <Notice result={result} />
 
-      {onMe && (
-        <SignBox
-          tone="red"
-          compact
-          title={
-            <>
-              ! Cursed: {onMe.card_name} <span className="font-normal">by {name(onMe.attacker_team)}</span>
-            </>
-          }
-        >
-          {onMe.clearance && (
-            <p>
-              <b>To clear:</b> {onMe.clearance}
-            </p>
-          )}
-          {confirm ? (
-            <div className="flex gap-2">
-              <button
-                disabled={pending}
-                onClick={() => run(() => (confirm === "clear" ? clearCurse(onMe.id) : vetoCurse(onMe.id)))}
-                className={`flex-1 rounded-lg p-2 font-semibold text-white disabled:opacity-50 ${
-                  confirm === "clear" ? "bg-green-600" : "bg-red-600"
-                }`}
-              >
-                {confirm === "clear" ? "Yes, we did it" : "Yes, use Veto"}
-              </button>
-              <button onClick={() => setConfirm(null)} className="flex-1 rounded-lg border bg-white p-2">
-                Cancel
-              </button>
+      {onMe.map((c) => {
+        const asked = confirm?.id === c.id ? confirm.kind : null;
+        return (
+          <SignBox
+            key={c.id}
+            tone="red"
+            title={
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="tc-label opacity-90">Cursed by {name(c.attacker_team)}</div>
+                  <div className="text-lg leading-tight break-words">{c.card_name}</div>
+                </div>
+                <SpeedTag>+1×</SpeedTag>
+              </div>
+            }
+          >
+            <div>
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="tc-label text-red-700">{c.clearance ? "To clear" : ""}</span>
+                <span className="shrink-0 text-xs text-gray-500">since {clockTime(c.started_at)}</span>
+              </div>
+              {c.clearance && <p className="font-semibold">{c.clearance}</p>}
             </div>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setConfirm("clear")}
-                className="flex-1 rounded-lg border-2 border-green-600 bg-white p-2 font-semibold text-green-700"
-              >
-                Task done
-              </button>
-              {hasVeto && (
+            {asked ? (
+              <div className="flex gap-2">
                 <button
-                  onClick={() => setConfirm("veto")}
-                  className="flex-1 rounded-lg border-2 border-red-600 bg-white p-2 font-semibold text-red-700"
+                  disabled={pending}
+                  onClick={() => run(() => (asked === "clear" ? clearCurse(c.id) : vetoCurse(c.id)))}
+                  className={`flex-1 p-2 font-bold text-white disabled:opacity-50 ${
+                    asked === "clear" ? "bg-green-600" : "bg-red-600"
+                  }`}
                 >
-                  Veto
+                  {asked === "clear" ? "Yes, we did it" : "Yes, use Veto"}
                 </button>
-              )}
+                <button onClick={() => setConfirm(null)} className="flex-1 border-2 border-gray-900 bg-white p-2 font-bold">
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirm({ id: c.id, kind: "clear" })}
+                  className="flex-1 bg-green-600 p-2 font-bold text-white"
+                >
+                  ✓ Task done
+                </button>
+                {hasVeto && (
+                  <button
+                    onClick={() => setConfirm({ id: c.id, kind: "veto" })}
+                    className="flex-1 border-2 border-red-600 bg-white p-2 font-bold text-red-700"
+                  >
+                    Veto
+                  </button>
+                )}
+              </div>
+            )}
+          </SignBox>
+        );
+      })}
+
+      {byMe.length > 0 && (
+        <SignBox
+          tone="orange"
+          title={
+            <div className="flex items-center justify-between gap-2">
+              <span>
+                Your curses <span className="font-normal">({byMe.length})</span>
+              </span>
+              <SpeedTag>−{byMe.length}×</SpeedTag>
             </div>
-          )}
+          }
+          bodyClassName="bg-white space-y-0! p-0!"
+        >
+          <ul className="divide-y divide-gray-200">
+            {byMe.map((c) => (
+              <li key={c.id} className="border-l-4 border-orange-600 px-3 py-2">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="min-w-0 font-bold break-words">
+                    {c.card_name} <span className="font-normal text-gray-600">on</span> {name(c.target_team)}
+                  </span>
+                  <span className="shrink-0 text-xs text-gray-500">since {clockTime(c.started_at)}</span>
+                </div>
+                {c.clearance && (
+                  <p className="text-sm text-gray-600">
+                    <span className="tc-label text-gray-500">They must:</span> {c.clearance}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
         </SignBox>
       )}
-
-      {byMe.map((c) => (
-        <SignBox
-          key={c.id}
-          tone="orange"
-          compact
-          title={
-            <>
-              Your curse: {c.card_name} <span className="font-normal">on {name(c.target_team)}</span>
-            </>
-          }
-        />
-      ))}
 
       {speedFix}
     </section>
   );
+}
+
+// A small square tag on a sign bar, e.g. "+1×".
+function SpeedTag({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="shrink-0 border-2 border-white px-1.5 text-xs font-bold whitespace-nowrap tabular-nums">
+      {children} speed
+    </span>
+  );
+}
+
+// "2:14 pm", in the phone's own time format.
+function clockTime(iso: string) {
+  return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }

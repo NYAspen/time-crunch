@@ -91,6 +91,10 @@ const checks = [
     const { error } = await supabase.rpc("admin_set_speed", { p_team: team.id, new_speed: 0 });
     return !!error;
   }],
+  ["Step a team's speed (admin_step_speed)", async () => {
+    const { error } = await supabase.rpc("admin_step_speed", { p_team: team.id, p_delta: -1 });
+    return !!error;
+  }],
   ["Match a team's speed to its curses (admin_sync_speed)", async () => {
     const { error } = await supabase.rpc("admin_sync_speed", { p_team: team.id });
     return !!error;

@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Countdown } from "@/components/Countdown";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { useServerNow } from "@/components/useServerNow";
 import { loadClocks, loadGameState, loadTeams } from "@/lib/queries";
-import { describeSpeed } from "@/lib/time";
-import { SPEEDS, type ActionResult, type Speed } from "@/lib/types";
-import { setMySpeed } from "./gameActions";
+import type { ActionResult } from "@/lib/types";
+import { stepMySpeed } from "./gameActions";
 import { Notice } from "@/components/Notice";
-import { speedButtonClass } from "@/components/speedStyles";
+import { SpeedStepper } from "@/components/SpeedStepper";
 
 export function TeamClockPanel({ teamId }: { teamId: string }) {
   const { data: game } = useLiveTable("game_state", loadGameState);
@@ -17,7 +16,6 @@ export function TeamClockPanel({ teamId }: { teamId: string }) {
   const { data: clocks, error } = useLiveTable("team_clocks", loadClocks);
   const serverNow = useServerNow();
   const [result, setResult] = useState<ActionResult>(null);
-  const [pending, startTransition] = useTransition();
 
   if (error) return <p className="text-red-700">Error loading your time: {error}</p>;
 
@@ -27,42 +25,33 @@ export function TeamClockPanel({ teamId }: { teamId: string }) {
     return <p className="text-gray-500">Loading your time…</p>;
   }
 
-  const chooseSpeed = (speed: Speed) =>
-    startTransition(async () => {
-      setResult(await setMySpeed(speed));
-      // Show the change straight away rather than waiting for realtime.
-      refreshAllLiveTables();
-    });
+  const changeSpeed = async (delta: number) => {
+    const { result, speed } = await stepMySpeed(delta);
+    setResult(result);
+    // Show the change straight away rather than waiting for realtime.
+    refreshAllLiveTables();
+    return speed;
+  };
+
+  const active = team.status === "active";
 
   return (
-    <section className="space-y-3">
-      <Countdown game={game} team={team} clock={clock} serverNow={serverNow} />
-
-      {team.status === "active" && (
-        <div className="tc-speed space-y-1 rounded-xl border bg-white px-3 py-2">
-          <div className="tc-label">Countdown speed</div>
-          <div>
-            <div className="grid grid-cols-3 gap-1">
-              {SPEEDS.map((speed) => (
-                <button
-                  key={speed}
-                  disabled={pending || speed === team.speed}
-                  onClick={() => chooseSpeed(speed)}
-                  className={`py-1.5 ${speedButtonClass(speed, speed === team.speed)} disabled:cursor-default`}
-                >
-                  {speed}×
-                </button>
-              ))}
-            </div>
-          </div>
-          <p className="text-xs text-gray-600">{describeSpeed(team.speed)}</p>
-          <p className="text-xs text-gray-500">
-            Curses change this automatically: +1× for a curse on you, −1× for each curse you played. Only change
-            it by hand to fix a mistake.
-          </p>
-          {result && !result.ok && <Notice compact result={result} />}
-        </div>
+    <section className="space-y-2">
+      <Countdown
+        game={game}
+        team={team}
+        clock={clock}
+        serverNow={serverNow}
+        // The countdown is a black sign (themes.css), so the arrows use their dark style.
+        side={active && <SpeedStepper speed={team.speed} onChange={changeSpeed} vertical dark />}
+      />
+      {active && (
+        <p className="text-xs text-gray-500">
+          Speed: curses change it automatically (+1× for each curse on you, −1× for each you played). Only use the
+          arrows to fix a mistake.
+        </p>
       )}
+      {result && !result.ok && <Notice compact result={result} />}
     </section>
   );
 }
