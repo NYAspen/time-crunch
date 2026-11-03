@@ -194,7 +194,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - Each browser tab keeps ONE channel to `game-sync`, and only the sections showing that table reload. RLS decides what each one gets back.
   - **Don't** go back to `postgres_changes` subscriptions per component. Supabase checks RLS for every change × every subscription, one at a time, and with about 30 subscriptions per page that made updates arrive seconds late.
   - `scripts/sync-check.mjs` measures the delay.
-- **Rule:** show every action's result with `components/Notice.tsx` (green or red, fades after 5 s, or 8 s for errors, and has an × to close). Don't write one-off message boxes.
+- **Rule:** on the **team page**, show every action's result with `showResult(result)` from `components/Toasts.tsx` (a pop-down at the top; green fades after 5 s, others after 8 s; × to close). Pass `{ undoable: true }` for actions that create a team undo (claim, use, discard, clear, veto): their message then shows only in the bottom Undo bar ("✓ Done … Undo"), never twice. On the **admin page**, use `components/Notice.tsx` inline. Don't write one-off message boxes.
 - **Rule:** after any action, call `refreshAllLiveTables()`, or wrap form actions in `withRefresh(...)`. Every section then updates immediately; Supabase's realtime messages can take a few seconds and are only a backup.
 
 **Migrations:**
@@ -458,6 +458,13 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - `lock challenge` (Preparation): only the locking team can complete it; one lock per team (`challenges.locked_by`, unique index). A trigger clears the lock whenever the challenge leaves the board (claimed, removed, replaced, reset).
   - `use_card` gained `p_curse`, `p_challenge`, `p_cards`. Team Undo (60 s) and admin activity-log Undo cover all six.
   - Sample cards for each in `content/cards-example.csv`.
+
+- **Pop-down notifications** (migration `0020_team_feed.sql`, 2026-11-03; **not run yet**):
+  - `team_feed()` gives each team only the activity-log entries meant for it (last 30 min): Elimination starting, any team eliminated / back in, other teams completing, replacing or locking a challenge, being cursed or stolen from, its curse cleared or vetoed, its steal vetoed, and admin corrections to it. The team's own actions are left out.
+  - `app/team/EventFeed.tsx` turns new entries into pop-downs at the top (`components/Toasts.tsx`, at most 3 at once; a short buzz on Android for bad news). The newest entry shown is remembered on the phone, so reloads don't repeat them and things that happened while the phone was locked still show.
+  - Action results on the team page are pop-downs too (no more inline green boxes). Undoable actions show one combined "✓ Done: <message> · Undo" bar at the bottom instead of a green box plus an Undo bar.
+  - The "Card stolen" box only shows when the team holds a Veto (to offer it); otherwise the pop-down says what was stolen.
+  - `rls-check.mjs` has 1 new check.
 
 ### Outstanding
 - Full-loop test on several phones.

@@ -6,14 +6,13 @@ import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadChallenges, loadGameState, loadTeams } from "@/lib/queries";
 import type { ActionResult, Challenge } from "@/lib/types";
 import { claimChallenge } from "./gameActions";
-import { Notice } from "@/components/Notice";
+import { showResult } from "@/components/Toasts";
 import { SignBox } from "@/components/SignBox";
 
 export function ChallengeBoard({ teamId }: { teamId: string }) {
   const { data: challenges, error } = useLiveTable("challenges", loadChallenges);
   const { data: game } = useLiveTable("game_state", loadGameState);
   const { data: teams } = useLiveTable("teams", loadTeams);
-  const [result, setResult] = useState<ActionResult>(null);
 
   if (error) return <p className="text-red-700">Error loading challenges: {error}</p>;
   if (!challenges || !game || !teams) return <p className="text-gray-500">Loading challenges…</p>;
@@ -31,8 +30,6 @@ export function ChallengeBoard({ teamId }: { teamId: string }) {
 
   return (
     <section className="space-y-3">
-
-      <Notice result={result} />
       {game.is_paused && (
         <p className="text-sm text-gray-600">The game is paused. Challenges can be completed again when it resumes.</p>
       )}
@@ -59,7 +56,8 @@ export function ChallengeBoard({ teamId }: { teamId: string }) {
                 : null
             }
             onClaimed={(r) => {
-              setResult(r);
+              // A completion can be undone, so its result shows in the Undo bar.
+              showResult(r, { undoable: true });
               refreshAllLiveTables();
             }}
           />

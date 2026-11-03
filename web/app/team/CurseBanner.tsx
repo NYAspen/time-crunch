@@ -7,7 +7,7 @@ import { curseSpeed } from "@/lib/time";
 import type { ActionResult } from "@/lib/types";
 import { clearCurse, syncMySpeed, vetoCurse } from "./gameActions";
 import { useHasVeto } from "./StealAlert";
-import { Notice } from "@/components/Notice";
+import { showResult } from "@/components/Toasts";
 import { SignBox } from "@/components/SignBox";
 
 // Shows curses on/by this team. Playing and clearing a curse shifts both teams'
@@ -16,7 +16,6 @@ import { SignBox } from "@/components/SignBox";
 export function CurseBanner({ teamId }: { teamId: string }) {
   const { data: curses } = useLiveTable("curses", loadCurses);
   const { data: teams } = useLiveTable("teams", loadTeams);
-  const [result, setResult] = useState<ActionResult>(null);
   // Which curse's button was tapped (a team can have several curses on it).
   const [confirm, setConfirm] = useState<{ id: string; kind: "clear" | "veto" } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -30,11 +29,12 @@ export function CurseBanner({ teamId }: { teamId: string }) {
   const onMe = curses.filter((c) => c.status === "active" && c.target_team === teamId);
   const byMe = curses.filter((c) => c.status === "active" && c.attacker_team === teamId);
 
-  if (onMe.length === 0 && byMe.length === 0 && !result) return null;
+  if (onMe.length === 0 && byMe.length === 0) return null;
 
-  const run = (action: () => Promise<ActionResult>) =>
+  // Clearing and vetoing can be undone: their result shows in the Undo bar.
+  const run = (action: () => Promise<ActionResult>, undoable = false) =>
     startTransition(async () => {
-      setResult(await action());
+      showResult(await action(), { undoable });
       setConfirm(null);
       refreshAllLiveTables();
     });
@@ -56,8 +56,6 @@ export function CurseBanner({ teamId }: { teamId: string }) {
   // Curses this team played: one orange sign listing them all.
   return (
     <section className="space-y-2">
-      <Notice result={result} />
-
       {onMe.map((c) => {
         const asked = confirm?.id === c.id ? confirm.kind : null;
         return (
@@ -85,7 +83,7 @@ export function CurseBanner({ teamId }: { teamId: string }) {
               <div className="flex gap-2">
                 <button
                   disabled={pending}
-                  onClick={() => run(() => (asked === "clear" ? clearCurse(c.id) : vetoCurse(c.id)))}
+                  onClick={() => run(() => (asked === "clear" ? clearCurse(c.id) : vetoCurse(c.id)), true)}
                   className={`flex-1 p-2 font-bold text-white disabled:opacity-50 ${
                     asked === "clear" ? "bg-green-600" : "bg-red-600"
                   }`}

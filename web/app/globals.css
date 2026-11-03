@@ -35,3 +35,14 @@ textarea {
     accent-color: var(--color-gray-900);
   }
 }
+
+/* Pop-down notifications (components/Toasts.tsx) drop in from the top. */
+@keyframes tc-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-0.75rem);
+  }
+}
+.tc-drop {
+  animation: tc-drop 0.2s ease-out;
+}

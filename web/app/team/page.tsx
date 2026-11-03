@@ -3,8 +3,10 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { LogoutButton } from "@/components/LogoutButton";
 import { PausedBox, PhaseTag } from "@/components/PhaseBanner";
+import { Toasts } from "@/components/Toasts";
 import { getCurrentTeam } from "@/lib/auth";
 import { CurseBanner } from "./CurseBanner";
+import { EventFeed } from "./EventFeed";
 import { StealAlert } from "./StealAlert";
 import { TeamClockPanel } from "./TeamClockPanel";
 import { TeamTabs } from "./TeamTabs";
@@ -40,6 +42,9 @@ async function TeamView() {
       <CurseBanner teamId={team.id} />
       <StealAlert teamId={team.id} />
       <TeamTabs teamId={team.id} />
+      {/* Pop-down notifications: action results and other teams' moves. */}
+      <Toasts />
+      <EventFeed teamId={team.id} />
       {/* Last, so its spacer sits at the bottom of the page, under the tabs. */}
       <UndoBar teamId={team.id} />
     </>

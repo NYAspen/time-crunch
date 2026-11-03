@@ -207,6 +207,9 @@ export type ActivityLogEntry = {
   undone_at: string | null;
 };
 
+// An activity-log entry meant for one team (team_feed, migration 0020).
+export type FeedEntry = Omit<ActivityLogEntry, "undone_at">;
+
 export type ActionResult = { ok: boolean; message: string } | null;
 
 // Each team logs in as a Supabase user whose email is derived from the team id

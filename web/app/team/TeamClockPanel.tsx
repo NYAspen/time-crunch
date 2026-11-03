@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { Countdown } from "@/components/Countdown";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { useServerNow } from "@/components/useServerNow";
 import { loadClocks, loadGameState, loadTeams } from "@/lib/queries";
-import type { ActionResult } from "@/lib/types";
 import { stepMySpeed } from "./gameActions";
-import { Notice } from "@/components/Notice";
+import { showResult } from "@/components/Toasts";
 import { SpeedStepper } from "@/components/SpeedStepper";
 
 export function TeamClockPanel({ teamId }: { teamId: string }) {
@@ -15,7 +13,6 @@ export function TeamClockPanel({ teamId }: { teamId: string }) {
   const { data: teams } = useLiveTable("teams", loadTeams);
   const { data: clocks, error } = useLiveTable("team_clocks", loadClocks);
   const serverNow = useServerNow();
-  const [result, setResult] = useState<ActionResult>(null);
 
   if (error) return <p className="text-red-700">Error loading your time: {error}</p>;
 
@@ -27,7 +24,8 @@ export function TeamClockPanel({ teamId }: { teamId: string }) {
 
   const changeSpeed = async (delta: number) => {
     const { result, speed } = await stepMySpeed(delta);
-    setResult(result);
+    // Only problems pop down: the new speed shows on the countdown itself.
+    if (result && !result.ok) showResult(result);
     // Show the change straight away rather than waiting for realtime.
     refreshAllLiveTables();
     return speed;
@@ -47,11 +45,10 @@ export function TeamClockPanel({ teamId }: { teamId: string }) {
       />
       {active && (
         <p className="text-xs text-gray-500">
-          Speed: curses change it automatically (+1× for each curse on you, −1× for each you played). Only use the
+          Curses change speed automatically (+1× for each curse on you, −1× for each you played). Only use the
           arrows to fix a mistake.
         </p>
       )}
-      {result && !result.ok && <Notice compact result={result} />}
     </section>
   );
 }

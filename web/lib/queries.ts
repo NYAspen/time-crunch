@@ -6,6 +6,7 @@ import type {
   CardType,
   Challenge,
   Curse,
+  FeedEntry,
   GameState,
   LedgerEntry,
   PublicTeam,
@@ -59,6 +60,13 @@ export async function loadActivityLog(): Promise<ActivityLogEntry[]> {
     .limit(300);
   if (error) throw new Error(error.message);
   return data;
+}
+
+// The log entries meant for the calling team (pop-down notifications).
+export async function loadTeamFeed(): Promise<FeedEntry[]> {
+  const { data, error } = await createClient().rpc("team_feed");
+  if (error) throw new Error(error.message);
+  return data ?? [];
 }
 
 // Teams get the board and claimed challenges (RLS); admins also get the pool.

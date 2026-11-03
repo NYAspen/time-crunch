@@ -233,6 +233,13 @@ const checks = [
     const { error } = await supabase.rpc("veto_steal", { p_steal: "00000000-0000-0000-0000-000000000000" });
     return !!error;
   }],
+  // Notifications (0020): the feed must never show other teams' private moves.
+  ["See other teams' private moves in its notifications", async () => {
+    const { data, error } = await supabase.rpc("team_feed");
+    if (error) return true;
+    const privateMoves = ["card_kept", "cards_drawn", "card_discarded", "speed_changed", "time_adjusted"];
+    return !data.some((e) => e.team_id !== team.id && privateMoves.includes(e.event_type));
+  }],
 ];
 
 let failures = 0;

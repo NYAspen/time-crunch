@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { showResult } from "@/components/Toasts";
 import { CardView } from "@/components/CardView";
 import { drawLabel } from "@/components/ChallengeRewards";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
@@ -28,7 +29,6 @@ export function CardHand({ teamId }: { teamId: string }) {
   const { data: game } = useLiveTable("game_state", loadGameState);
   const { data: curses } = useLiveTable("curses", loadCurses);
   const { data: challenges } = useLiveTable("challenges", loadChallenges);
-  const [result, setResult] = useState<ActionResult>(null);
   const [pending, startTransition] = useTransition();
 
   if (error) return <p className="text-red-700">Error loading your cards: {error}</p>;
@@ -66,16 +66,15 @@ export function CardHand({ teamId }: { teamId: string }) {
   const eliminated = teams.find((t) => t.id === teamId)?.status !== "active";
   const rewardWaiting = teams.find((t) => t.id === teamId)?.reward_multiplier ?? 1;
 
-  const run = (action: () => Promise<ActionResult>) =>
+  // Using and discarding can be undone: their result shows in the Undo bar.
+  const run = (action: () => Promise<ActionResult>, undoable = false) =>
     startTransition(async () => {
-      setResult(await action());
+      showResult(await action(), { undoable });
       refreshAllLiveTables();
     });
 
   return (
     <section className="space-y-3">
-      <Notice result={result} />
-
       <HandMeter count={hand.length} limit={limit} />
 
       {eliminated ? (
@@ -145,7 +144,7 @@ export function CardHand({ teamId }: { teamId: string }) {
       )}
 
       {hand.length === 0 ? (
-        <p className="text-gray-500">No cards in your hand yet. Complete challenges to draw cards.</p>
+        <p className="text-gray-500"></p>
       ) : (
         <ul className="grid grid-cols-2 gap-2.5">
           {hand.map((card) => {
@@ -203,7 +202,7 @@ function HandMeter({ count, limit }: { count: number; limit: number }) {
       ? "border-orange-400 bg-orange-50 text-orange-900"
       : "border-gray-300 bg-white text-gray-900";
   const filled = over ? "bg-red-500" : full ? "bg-orange-500" : "bg-gray-900";
-  const note = over ? "Over the limit" : full ? "Hand full: keeping another card puts you over" : "Room for more";
+  const note = over ? "Over the limit" : full ? "Hand full: keeping another card puts you over" : "";
 
   return (
     <div className={`rounded-xl border-2 px-3 py-2 ${tone}`}>
@@ -257,7 +256,7 @@ function HandCard({
   canDiscard: boolean; // Discard only shows while the hand is over the limit
   typeOf: (card: Card) => CardType | undefined;
   pending: boolean;
-  run: (action: () => Promise<ActionResult>) => void;
+  run: (action: () => Promise<ActionResult>, undoable?: boolean) => void;
 }) {
   const [mode, setMode] = useState<"idle" | "use" | "discard">("idle");
   const [target, setTarget] = useState(""); // duplicate: card to copy
@@ -498,7 +497,7 @@ function HandCard({
                       return null;
                     }
                     return r;
-                  });
+                  }, true);
                 }}
                 className="rounded-lg bg-gray-900 p-2 font-semibold text-white disabled:opacity-40"
               >
@@ -519,7 +518,7 @@ function HandCard({
                 disabled={pending}
                 onClick={() => {
                   setMode("idle");
-                  run(() => discardCard(card.id));
+                  run(() => discardCard(card.id), true);
                 }}
                 className="rounded-lg bg-red-600 p-2 font-semibold text-white disabled:opacity-50"
               >

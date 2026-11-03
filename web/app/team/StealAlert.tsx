@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Notice } from "@/components/Notice";
+import { useTransition } from "react";
+import { showResult } from "@/components/Toasts";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { useServerNow } from "@/components/useServerNow";
 import { loadCards, loadCardTypes, loadSteals, loadTeams } from "@/lib/queries";
-import type { ActionResult } from "@/lib/types";
 import { vetoSteal } from "./gameActions";
 import { SignBox } from "@/components/SignBox";
 
@@ -22,14 +21,14 @@ export function useHasVeto(teamId: string) {
   );
 }
 
-// For 60 seconds after another team steals a card from this team, says which
-// card went and offers a Veto to take it back.
+// For 60 seconds after another team steals a card from this team, offers a
+// Veto to take it back, if the team holds one. (The steal itself pops down at
+// the top: app/team/EventFeed.tsx.)
 export function StealAlert({ teamId }: { teamId: string }) {
   const { data: steals } = useLiveTable("steals", loadSteals);
   const { data: teams } = useLiveTable("teams", loadTeams);
   const hasVeto = useHasVeto(teamId);
   const serverNow = useServerNow(1000);
-  const [result, setResult] = useState<ActionResult>(null);
   const [pending, startTransition] = useTransition();
 
   const open =
@@ -38,18 +37,17 @@ export function StealAlert({ teamId }: { teamId: string }) {
           (s) => s.target_team === teamId && !s.vetoed_at && new Date(s.veto_until).getTime() > serverNow,
         )
       : [];
-  if (open.length === 0 && !result) return null;
+  if (open.length === 0 || !hasVeto) return null;
 
   const name = (id: string) => teams?.find((t) => t.id === id)?.name ?? "Another team";
   const veto = (id: string) =>
     startTransition(async () => {
-      setResult(await vetoSteal(id));
+      showResult(await vetoSteal(id), { undoable: true });
       refreshAllLiveTables();
     });
 
   return (
     <section className="space-y-2">
-      <Notice result={result} />
       {open.map((s) => {
         const secondsLeft = Math.max(Math.ceil((new Date(s.veto_until).getTime() - (serverNow ?? 0)) / 1000), 0);
         return (
@@ -57,15 +55,13 @@ export function StealAlert({ teamId }: { teamId: string }) {
             <p>
               <b>{name(s.attacker_team)}</b> stole <b>{s.card_name}</b> from your hand.
             </p>
-            {hasVeto && (
-              <button
-                disabled={pending}
-                onClick={() => veto(s.id)}
-                className="w-full rounded-lg bg-red-600 p-3 font-semibold text-white disabled:opacity-50"
-              >
-                Use Veto to take it back ({secondsLeft} s)
-              </button>
-            )}
+            <button
+              disabled={pending}
+              onClick={() => veto(s.id)}
+              className="w-full rounded-lg bg-red-600 p-3 font-semibold text-white disabled:opacity-50"
+            >
+              Use Veto to take it back ({secondsLeft} s)
+            </button>
           </SignBox>
         );
       })}
