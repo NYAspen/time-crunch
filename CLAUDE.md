@@ -459,7 +459,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - `use_card` gained `p_curse`, `p_challenge`, `p_cards`. Team Undo (60 s) and admin activity-log Undo cover all six.
   - Sample cards for each in `content/cards-example.csv`.
 
-- **Pop-down notifications** (migration `0020_team_feed.sql`, 2026-11-03; **not run yet**):
+- **Pop-down notifications** (migration `0020_team_feed.sql`, 2026-11-03; run and tested on localhost):
   - `team_feed()` gives each team only the activity-log entries meant for it (last 30 min): Elimination starting, any team eliminated / back in, other teams completing, replacing or locking a challenge, being cursed or stolen from, its curse cleared or vetoed, its steal vetoed, and admin corrections to it. The team's own actions are left out.
   - `app/team/EventFeed.tsx` turns new entries into pop-downs at the top (`components/Toasts.tsx`, at most 3 at once; a short buzz on Android for bad news). The newest entry shown is remembered on the phone, so reloads don't repeat them and things that happened while the phone was locked still show.
   - Action results on the team page are pop-downs too (no more inline green boxes). Undoable actions show one combined "✓ Done: <message> · Undo" bar at the bottom instead of a green box plus an Undo bar.
