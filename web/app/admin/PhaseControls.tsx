@@ -6,6 +6,7 @@ import { loadGameState } from "@/lib/queries";
 import { PHASE_LABELS, PHASES, type ActionResult, type Phase } from "@/lib/types";
 import { setPaused, setPhase } from "./adminActions";
 import { Notice } from "@/components/Notice";
+import { SignBox } from "@/components/SignBox";
 
 export function PhaseControls() {
   const { data: state } = useLiveTable("game_state", loadGameState);
@@ -23,8 +24,7 @@ export function PhaseControls() {
     });
 
   return (
-    <section className="space-y-3 rounded-xl border bg-white p-4">
-      <h2 className="text-lg font-semibold">Game controls</h2>
+    <SignBox tone="black" title={<h2 className="text-lg">Game controls</h2>}>
 
       <button
         disabled={pending}
@@ -44,7 +44,7 @@ export function PhaseControls() {
             disabled={pending || phase === state.phase}
             onClick={() => setConfirming(phase)}
             className={`rounded-lg border p-3 disabled:opacity-40 ${
-              phase === state.phase ? "border-blue-600 bg-blue-50 font-bold" : "bg-white"
+              phase === state.phase ? "border-blue-600 bg-blue-600 font-bold text-white disabled:opacity-100" : "bg-white"
             }`}
           >
             {PHASE_LABELS[phase]}
@@ -53,10 +53,7 @@ export function PhaseControls() {
       </div>
 
       {confirming && (
-        <div className="space-y-2 rounded-lg bg-orange-100 p-3">
-          <p className="font-medium text-orange-950">
-            Switch ALL teams from {PHASE_LABELS[state.phase]} to {PHASE_LABELS[confirming]}?
-          </p>
+        <SignBox tone="orange" title={`Switch ALL teams from ${PHASE_LABELS[state.phase]} to ${PHASE_LABELS[confirming]}?`}>
           <div className="flex gap-2">
             <button
               disabled={pending}
@@ -73,10 +70,10 @@ export function PhaseControls() {
               Cancel
             </button>
           </div>
-        </div>
+        </SignBox>
       )}
 
       <Notice result={result} />
-    </section>
+    </SignBox>
   );
 }

@@ -17,8 +17,8 @@ export function TeamLoginForm() {
   return (
     <form action={formAction} className="space-y-4">
       <label className="block space-y-1">
-        <span className="font-medium">Your team</span>
-        <select name="teamId" required defaultValue="" className="w-full rounded-lg border bg-white p-3">
+        <span className="tc-label">Your team</span>
+        <select name="teamId" required defaultValue="" className="w-full rounded-lg border-2 border-gray-900 bg-white p-3">
           <option value="" disabled>
             Choose a team…
           </option>
@@ -30,20 +30,20 @@ export function TeamLoginForm() {
         </select>
       </label>
       <label className="block space-y-1">
-        <span className="font-medium">Team code</span>
+        <span className="tc-label">Team code</span>
         <input
           name="code"
           required
           autoComplete="off"
           autoCapitalize="none"
           autoCorrect="off"
-          className="w-full rounded-lg border bg-white p-3"
+          className="w-full rounded-lg border-2 border-gray-900 bg-white p-3"
         />
       </label>
       {result && !result.ok && <Notice result={result} />}
       <button
         disabled={pending}
-        className="w-full rounded-xl bg-blue-600 p-4 text-lg font-semibold text-white disabled:opacity-50"
+        className="w-full rounded-xl bg-blue-600 p-4 text-lg font-bold text-white disabled:opacity-50"
       >
         {pending ? "Logging in…" : "Log in"}
       </button>

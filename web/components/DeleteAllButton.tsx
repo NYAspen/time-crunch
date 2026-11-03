@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import type { ActionResult } from "@/lib/types";
 import { refreshAllLiveTables } from "./useLiveTable";
 import { Notice } from "@/components/Notice";
+import { SignBox } from "@/components/SignBox";
 
 // A red "Delete all …" button that asks for confirmation first.
 export function DeleteAllButton({
@@ -22,8 +23,8 @@ export function DeleteAllButton({
   return (
     <div className="space-y-2">
       {confirming ? (
-        <div className="space-y-2 rounded-lg bg-red-50 p-3">
-          <p className="text-sm text-red-900">{warning}</p>
+        <SignBox tone="red" compact title="Are you sure?">
+          <p>{warning}</p>
           <div className="flex gap-2">
             <button
               disabled={pending}
@@ -42,11 +43,11 @@ export function DeleteAllButton({
               Cancel
             </button>
           </div>
-        </div>
+        </SignBox>
       ) : (
         <button
           onClick={() => setConfirming(true)}
-          className="w-full rounded border border-red-300 p-2 text-sm text-red-700"
+          className="w-full rounded border-2 border-red-600 bg-white p-2 text-sm font-bold text-red-700"
         >
           {label}
         </button>

@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
+import { LogoutButton } from "@/components/LogoutButton";
 import { PhaseBanner } from "@/components/PhaseBanner";
 import { isAdmin } from "@/lib/auth";
-import { logout } from "../actions";
 import { ActivityLog } from "./ActivityLog";
 import { CardManager } from "./CardManager";
 import { ChallengeManager } from "./ChallengeManager";
@@ -32,9 +32,7 @@ async function AdminView() {
     <>
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Admin</h1>
-        <form action={logout}>
-          <button className="rounded-lg border bg-white px-3 py-2 text-sm text-gray-700">Log out</button>
-        </form>
+        <LogoutButton />
       </header>
       <PhaseBanner />
       <PhaseControls />

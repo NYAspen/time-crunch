@@ -153,16 +153,16 @@ function ActivityRow({ entry, text }: { entry: ActivityLogEntry; text: string })
               <button
                 disabled={pending}
                 onClick={undo}
-                className="rounded bg-red-600 px-2 py-1 text-xs text-white disabled:opacity-50"
+                className="rounded bg-red-600 px-3 py-1 text-sm text-white disabled:opacity-50"
               >
                 Yes, undo
               </button>
-              <button onClick={() => setConfirming(false)} className="rounded border px-2 py-1 text-xs">
+              <button onClick={() => setConfirming(false)} className="rounded border px-3 py-1 text-sm">
                 Cancel
               </button>
             </>
           ) : (
-            <button onClick={() => setConfirming(true)} className="rounded border bg-white px-2 py-1 text-xs">
+            <button onClick={() => setConfirming(true)} className="rounded border bg-white px-3 py-1 text-sm">
               Undo
             </button>
           ))}

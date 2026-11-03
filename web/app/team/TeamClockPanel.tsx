@@ -9,6 +9,7 @@ import { describeSpeed } from "@/lib/time";
 import { SPEEDS, type ActionResult, type Speed } from "@/lib/types";
 import { setMySpeed } from "./gameActions";
 import { Notice } from "@/components/Notice";
+import { speedButtonClass } from "@/components/speedStyles";
 
 export function TeamClockPanel({ teamId }: { teamId: string }) {
   const { data: game } = useLiveTable("game_state", loadGameState);
@@ -38,8 +39,8 @@ export function TeamClockPanel({ teamId }: { teamId: string }) {
       <Countdown game={game} team={team} clock={clock} serverNow={serverNow} />
 
       {team.status === "active" && (
-        <div className="space-y-1 rounded-xl border bg-white px-3 py-2">
-          <div className="text-sm font-semibold">Countdown speed</div>
+        <div className="tc-speed space-y-1 rounded-xl border bg-white px-3 py-2">
+          <div className="tc-label">Countdown speed</div>
           <div>
             <div className="grid grid-cols-3 gap-1">
               {SPEEDS.map((speed) => (
@@ -47,9 +48,7 @@ export function TeamClockPanel({ teamId }: { teamId: string }) {
                   key={speed}
                   disabled={pending || speed === team.speed}
                   onClick={() => chooseSpeed(speed)}
-                  className={`rounded-md border py-1.5 font-bold ${
-                    speed === team.speed ? "border-gray-900 bg-gray-900 text-white" : "bg-white"
-                  } disabled:cursor-default`}
+                  className={`py-1.5 ${speedButtonClass(speed, speed === team.speed)} disabled:cursor-default`}
                 >
                   {speed}×
                 </button>

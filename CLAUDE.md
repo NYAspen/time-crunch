@@ -416,6 +416,16 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - Team Undo (60 s) and admin activity-log Undo cover steals, draws, hand bonuses and vetoes. A vetoed curse or steal can't be undone by the attacker.
   - `rls-check.mjs` has 4 new checks.
 
+- **Design: L Platform (CTA station signage), 2026-11-02, branch `feature/ui`:**
+  - Chosen over Departures, Four Stars, Timetable and three Platform variations (all removed, with the design picker). Square corners, Helvetica (Arimo where Helvetica is missing), black sign bars, the 'L' line colours.
+  - `app/themes.css` holds the design, switched on by `<html data-theme="platform">` in `app/layout.tsx`. It remaps Tailwind's colour, corner and font variables, plus a few `tc-*` hook classes (countdown, tabs, sections, challenge boxes).
+  - Sign-style pieces: challenge rewards and team status are square tags (icon block + label); `Notice` is a service-alert box (green ✓ "Done" / red ! "Problem"); the Undo bar and steal alert match.
+  - Cards (`CardView`) have a coloured name bar (red curse, blue power-up), Range / To clear rows, a thick edge and a drop shadow. Draw boxes have a purple header bar. Hand and draw-pick cards are smaller (`compact`), two to a row (draw picks on a grey tray); a hand card spans the full width while being used or discarded. Curse cards show their clearance task as the main text ("To clear") and leave off the description.
+  - Speed buttons (`components/speedStyles.ts`, team and admin): 0× blue, 1× black, 2× orange.
+  - Typography: heavy, tight headlines; small bold uppercase labels (`tc-label`, phase tag, tabs). Red sign-style Log out (`components/LogoutButton.tsx`). The home page is a station-name sign with no phase block.
+  - **Consistency rules:** anything needing attention (curses, steals, confirmations, warnings, admin notes, draws) uses `components/SignBox.tsx` (coloured heading bar + white panel; red / orange / purple / yellow / green / black). The home and login pages start with `components/PageSign.tsx` (black station-name sign with a Purple Line bar). No pale tinted or rounded boxes.
+  - Mobile defaults in `app/globals.css`: text boxes and dropdowns always 16px (stops iPhone zoom), buttons and dropdowns at least 36px tall, roomier fold-out headings, 20px checkboxes. Checked at 360px and 390px wide: no sideways scrolling on any page.
+
 ### Outstanding
 - Full-loop test on several phones.
 - Stages 2–5 (Tier 1) by Nov 1. Then the playtest, Tier 2 if there is time, and the rehearsal (section 2).
@@ -496,4 +506,5 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - 2026-10-23: **Hand limit added** (D8). Default 5, admin-adjustable. Over the limit, the team must discard before drawing or using cards.
 - 2026-11-02: **Power-ups** (migration 0015): Veto cancels a curse on you (any time while active) or takes back a stolen card within 60 s. Steal works like a curse: Elimination only, with a range confirmation. Hand +N lasts the rest of the game.
 - 2026-11-02: **Wording:** teams tap **Completed** instead of Claim, and card rewards read "draw N pick 1" (or "draw 1 card"). This is a text change only; the database still calls it a claim, and server messages (errors, the Undo bar) still say "claim".
+- 2026-11-02: **Discard only shows when a hand is over the limit** (team Cards tab). Otherwise cards can only be used. The database still allows discarding at any time, and the admin can still move cards back to the deck.
 - 2026-10-23: **Curses can't be played during Preparation**, only during Elimination (D11). Teams can still draw and hold them in the morning.

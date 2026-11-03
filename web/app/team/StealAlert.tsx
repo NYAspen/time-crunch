@@ -7,6 +7,7 @@ import { useServerNow } from "@/components/useServerNow";
 import { loadCards, loadCardTypes, loadSteals, loadTeams } from "@/lib/queries";
 import type { ActionResult } from "@/lib/types";
 import { vetoSteal } from "./gameActions";
+import { SignBox } from "@/components/SignBox";
 
 // Whether the team holds a Veto card (the database picks which copy to use).
 export function useHasVeto(teamId: string) {
@@ -52,8 +53,7 @@ export function StealAlert({ teamId }: { teamId: string }) {
       {open.map((s) => {
         const secondsLeft = Math.max(Math.ceil((new Date(s.veto_until).getTime() - (serverNow ?? 0)) / 1000), 0);
         return (
-          <div key={s.id} className="space-y-2 rounded-xl border-2 border-red-500 bg-red-50 p-4">
-            <div className="text-lg font-bold text-red-800">Card stolen!</div>
+          <SignBox key={s.id} tone="red" title="! Card stolen">
             <p>
               <b>{name(s.attacker_team)}</b> stole <b>{s.card_name}</b> from your hand.
             </p>
@@ -66,7 +66,7 @@ export function StealAlert({ teamId }: { teamId: string }) {
                 Use Veto to take it back ({secondsLeft} s)
               </button>
             )}
-          </div>
+          </SignBox>
         );
       })}
     </section>

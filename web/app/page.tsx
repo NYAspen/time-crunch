@@ -1,27 +1,22 @@
 import Link from "next/link";
-import { PhaseBanner } from "@/components/PhaseBanner";
+import { PageSign } from "@/components/PageSign";
 
 export default function Home() {
   return (
     <main className="space-y-6">
-      <h1 className="text-center text-2xl font-bold">
-        Jet Lag: Chicago
-        <br />
-        <span className="text-blue-700">Time Crunch</span>
-      </h1>
-      <PhaseBanner />
+      <PageSign title="Time Crunch" large />
       <div className="space-y-3">
         <Link
           href="/login"
-          className="block rounded-xl bg-blue-600 p-4 text-center text-lg font-semibold text-white"
+          className="flex items-center justify-between bg-blue-600 p-4 text-lg font-bold text-white"
         >
-          Team login
+          Team login <span aria-hidden>→</span>
         </Link>
         <Link
           href="/admin/login"
-          className="block rounded-xl border border-gray-300 bg-white p-4 text-center text-gray-700"
+          className="flex items-center justify-between border-2 border-gray-900 bg-white p-4 font-bold text-gray-900"
         >
-          Admin
+          Admin <span aria-hidden>→</span>
         </Link>
       </div>
     </main>

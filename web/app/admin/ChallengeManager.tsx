@@ -16,6 +16,7 @@ import {
   updateChallenge,
 } from "./adminActions";
 import { Notice } from "@/components/Notice";
+import { SignBox } from "@/components/SignBox";
 
 const EXAMPLE = "title\ttask\treward_cards\treward_minutes\nBean selfie\tTeam photo reflected in Cloud Gate\t2\t15";
 
@@ -46,9 +47,9 @@ export function ChallengeManager() {
         <b>{claimed.length}</b>
       </div>
       {active.length < game.board_size && (
-        <p className="rounded-lg bg-yellow-100 p-2 text-sm text-yellow-900">
-          The pool has run out, so the board isn&apos;t full. Import more challenges.
-        </p>
+        <SignBox tone="yellow" compact title="Note">
+          <p>The pool has run out, so the board isn&apos;t full. Import more challenges.</p>
+        </SignBox>
       )}
 
       <form action={sizeAction} className="flex items-center gap-2">
@@ -178,7 +179,7 @@ function ChallengeRow({ challenge, onChanged }: { challenge: Challenge; onChange
     <li className="space-y-2 rounded-lg border p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="font-medium">{challenge.title}</div>
+          <div className="font-extrabold">{challenge.title}</div>
           {challenge.task && <div className="text-sm text-gray-600">{challenge.task}</div>}
           <ChallengeRewards challenge={challenge} />
         </div>

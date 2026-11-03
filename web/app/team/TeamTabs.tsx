@@ -32,7 +32,7 @@ export function TeamTabs({ teamId }: { teamId: string }) {
   return (
     <div className="space-y-3">
       <nav
-        className="sticky z-10 -mx-4 flex gap-1 border-b bg-gray-50/95 px-4 py-2 backdrop-blur"
+        className="tc-tabs sticky z-10 -mx-4 flex gap-1 border-b bg-gray-50/95 px-4 py-2 backdrop-blur"
         style={{ top: "env(safe-area-inset-top, 0px)" }}
       >
         {TABS.map((t) => (
@@ -47,7 +47,7 @@ export function TeamTabs({ teamId }: { teamId: string }) {
             {t.label}
             {t.id === "cards" && game && (
               <span
-                className={`rounded-full px-1.5 text-xs tabular-nums ${
+                className={`rounded-sm px-1.5 text-xs tabular-nums ${
                   overLimit ? "bg-red-600 text-white" : tab === t.id ? "bg-white/20" : "bg-gray-200 text-gray-700"
                 }`}
               >
@@ -55,7 +55,7 @@ export function TeamTabs({ teamId }: { teamId: string }) {
               </span>
             )}
             {t.id === "cards" && waitingDraws > 0 && (
-              <span className="rounded-full bg-purple-600 px-1.5 text-xs text-white">{waitingDraws}</span>
+              <span className="rounded-sm bg-purple-600 px-1.5 text-xs text-white">{waitingDraws}</span>
             )}
           </button>
         ))}

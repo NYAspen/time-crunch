@@ -14,12 +14,12 @@ export function PhaseTag() {
   if (!state) return <span className="text-sm text-gray-400">Loading…</span>;
 
   return (
-    <span className="inline-flex flex-wrap items-center gap-2 rounded-md bg-blue-600 px-2.5 py-1 text-sm text-white">
+    <span className="tc-phase inline-flex flex-wrap items-center gap-2 rounded-md bg-blue-600 px-2.5 py-1 text-sm text-white">
       <span>
         <span className="opacity-80">Current phase:</span> <b>{PHASE_LABELS[state.phase]}</b>
       </span>
       {state.is_paused && (
-        <span className="rounded bg-yellow-300 px-1.5 font-semibold text-yellow-950">
+        <span className="tc-paused bg-yellow-300 px-1.5 font-bold text-gray-900">
           ⏸ Paused{state.paused_at ? ` since ${formatTime(state.paused_at)}` : ""}
         </span>
       )}
@@ -39,7 +39,7 @@ export function PhaseBanner() {
 
   return (
     <div className="space-y-2">
-      <div className="rounded-xl bg-blue-600 p-4 text-white">
+      <div className="tc-phase tc-phase-big border-t-8 border-blue-600 bg-gray-900 p-4 text-white">
         <div className="text-sm uppercase tracking-wide opacity-80">Current phase</div>
         <div className="text-3xl font-bold">{PHASE_LABELS[state.phase]}</div>
         <div className="text-sm opacity-80">
@@ -47,7 +47,7 @@ export function PhaseBanner() {
         </div>
       </div>
       {state.is_paused && (
-        <div className="rounded-xl bg-yellow-300 p-4 text-center text-lg font-bold text-yellow-950">
+        <div className="tc-paused border-2 border-gray-900 bg-yellow-300 p-4 text-center text-lg font-black tracking-wide text-gray-900 uppercase">
           ⏸ Game paused{state.paused_at ? ` since ${formatTime(state.paused_at)}` : ""}
         </div>
       )}

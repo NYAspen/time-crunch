@@ -4,9 +4,34 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
-/* Large, thumb-friendly controls by default. */
-button,
+/* iPhones zoom into any text box or dropdown under 16px, so these always
+   stay at 16px (outside a layer, so it beats Tailwind's text-sm etc.). */
 input,
-select {
-  font-size: 1rem;
+select,
+textarea {
+  font-size: max(1rem, 16px);
+}
+
+/* Phone-friendly defaults. In the base layer, so a component's own Tailwind
+   classes still win. */
+@layer base {
+  button {
+    font-size: 1rem;
+  }
+  /* Thumb-sized tap targets: buttons and dropdowns at least 36px tall,
+     fold-out headings with room to tap. */
+  button,
+  select {
+    min-height: 2.25rem;
+  }
+  summary {
+    padding-block: 0.5rem;
+    cursor: pointer;
+  }
+  input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+    accent-color: var(--color-gray-900);
+  }
 }

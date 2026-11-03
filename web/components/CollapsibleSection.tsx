@@ -17,7 +17,8 @@ export function CollapsibleSection({
   return (
     <details
       open={defaultOpen}
-      className={`group rounded-xl border ${danger ? "border-red-300 bg-red-50" : "bg-white"}`}
+      data-danger={danger || undefined}
+      className={`tc-section group rounded-xl border ${danger ? "border-red-600 bg-white" : "bg-white"}`}
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-4 select-none">
         <span>

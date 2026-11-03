@@ -1,0 +1,229 @@
+/*
+  L Platform design: CTA station signage. Switched on by
+  <html data-theme="platform"> in app/layout.tsx.
+
+  How it works: every component already uses Tailwind colour classes
+  (bg-white, text-gray-900, bg-blue-600 ...). Tailwind turns those into CSS
+  variables (--color-white, --color-gray-900 ...), so this file gives those
+  variables new values. A few `tc-*` hook classes on key components
+  (countdown, tabs, sections, challenge boxes) add the signage touches.
+
+  Colour roles:
+    gray-50 = page, white = panels (and text on solid buttons),
+    gray-900 = main ink / dark fills, blue-600 = main buttons and phase tag,
+    red = curses and errors, purple = draws, orange = confirm boxes,
+    yellow-300 = paused.
+*/
+
+/* Tailwind's bare `border` uses the text colour; give it a rule colour.
+   In the base layer so explicit border-* classes still win. */
+@layer base {
+  [data-theme] *,
+  [data-theme] ::before,
+  [data-theme] ::after {
+    border-color: var(--tc-rule);
+  }
+}
+
+/* ================================================================== */
+/* BASE: L PLATFORM. CTA station signage. Black sign bars, white
+   panels, Helvetica, square corners and the eight 'L' line colours.  */
+/* ================================================================== */
+[data-theme] {
+  --tc-rule: #c9c9c6;
+  --sign-bg: #141414;
+  --sign-ink: #ffffff;
+  --accent: var(--line-purple); /* bar on top of the running countdown */
+
+  --line-red: #c60c30;
+  --line-blue: #00a1de;
+  --line-brown: #62361b;
+  --line-green: #009b3a;
+  --line-orange: #f9461c;
+  --line-purple: #522398;
+  --line-pink: #e27ea6;
+  --line-yellow: #f9e300;
+
+  /* iPhones have Helvetica; Windows and Android get Arimo, a close match. */
+  --font-sans: "Helvetica Neue", Helvetica, var(--font-arimo), Arial, sans-serif;
+  --font-mono: var(--font-sans);
+  --radius: 0;
+  --radius-sm: 0;
+  --radius-md: 1px;
+  --radius-lg: 2px;
+  --radius-xl: 3px;
+
+  --color-white: #ffffff;
+  --color-gray-50: #efefec;
+  --color-gray-100: #e6e6e3;
+  --color-gray-200: #dcdcd8;
+  --color-gray-300: #c4c4c0;
+  --color-gray-400: #9a9a96;
+  --color-gray-500: #6f6f6b;
+  --color-gray-600: #575754;
+  --color-gray-700: #3f3f3c;
+  --color-gray-800: #282826;
+  --color-gray-900: #141414;
+
+  --color-blue-50: #e5f5fc;
+  --color-blue-200: #b0e0f4;
+  --color-blue-300: #79cbec;
+  --color-blue-600: #00689e;
+  --color-blue-700: #005884;
+  --color-blue-900: #003550;
+
+  --color-red-600: #c60c30;
+  --color-red-700: #a50a28;
+
+  --color-purple-50: #f1ecf8;
+  --color-purple-100: #e2d7f1;
+  --color-purple-400: #8b6cc6;
+  --color-purple-600: #522398;
+  --color-purple-700: #451d80;
+  --color-purple-800: #381868;
+
+  --color-orange-600: #d93a12;
+  --color-green-600: #00843d;
+  --color-green-700: #006b31;
+  --color-yellow-300: #f9e300;
+}
+[data-theme] body {
+  font-family: var(--font-sans);
+}
+/* Line-colour stripe across the top. */
+[data-theme] body::before {
+  content: "";
+  display: block;
+  height: 8px;
+  background: linear-gradient(
+    to right,
+    var(--line-red) 0 12.5%,
+    var(--line-blue) 0 25%,
+    var(--line-brown) 0 37.5%,
+    var(--line-green) 0 50%,
+    var(--line-orange) 0 62.5%,
+    var(--line-purple) 0 75%,
+    var(--line-pink) 0 87.5%,
+    var(--line-yellow) 0
+  );
+}
+/* Typography: signage-style Helvetica. Heavy, tight headlines; small bold
+   uppercase labels with wide spacing; even line breaks. */
+[data-theme] h1 {
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+[data-theme] h2 {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+[data-theme] h1,
+[data-theme] h2,
+[data-theme] .tc-challenge > div:first-child {
+  text-wrap: balance;
+}
+[data-theme] p {
+  text-wrap: pretty;
+}
+[data-theme] .tc-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+[data-theme] .tc-phase {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-theme] .tc-phase-big {
+  letter-spacing: 0;
+  text-transform: none;
+}
+[data-theme] .tc-phase-big > div:first-child {
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+[data-theme] .tc-phase-big > div:nth-child(2) {
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+/* Countdown = platform sign. */
+[data-theme] .tc-countdown {
+  border-top: 8px solid var(--accent);
+  text-align: left;
+}
+[data-theme] .tc-countdown[data-state="running"],
+[data-theme] .tc-countdown[data-state="banked"] {
+  background: var(--sign-bg);
+  color: var(--sign-ink);
+}
+[data-theme] .tc-countdown[data-state="banked"] {
+  border-top-color: var(--line-blue);
+}
+[data-theme] .tc-countdown[data-state="eliminated"] {
+  border-top-color: var(--color-gray-500);
+}
+[data-theme] .tc-caption {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+[data-theme] .tc-digits {
+  font-size: 3.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+/* Section titles = sign bars. */
+[data-theme] .tc-section {
+  overflow: hidden;
+  border-color: var(--sign-bg);
+}
+[data-theme] .tc-section > summary > span:first-child > span:first-child {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+[data-theme] .tc-section > summary {
+  background: var(--sign-bg);
+  color: var(--sign-ink);
+  margin-bottom: 1rem;
+  padding-block: 0.75rem;
+}
+[data-theme] .tc-section > summary * {
+  color: inherit !important;
+}
+[data-theme] .tc-section:not([open]) > summary {
+  margin-bottom: 0;
+}
+[data-theme] .tc-section[data-danger] > summary {
+  background: var(--line-red);
+}
+/* Tabs. */
+[data-theme] .tc-tabs {
+  border-bottom: 3px solid var(--sign-bg);
+}
+[data-theme] .tc-tabs button {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+/* Each challenge gets a line colour down its left edge. */
+[data-theme] .tc-challenge {
+  border-left: 10px solid var(--line-red);
+}
+[data-theme] .tc-challenge:nth-child(8n + 2) { border-left-color: var(--line-blue); }
+[data-theme] .tc-challenge:nth-child(8n + 3) { border-left-color: var(--line-brown); }
+[data-theme] .tc-challenge:nth-child(8n + 4) { border-left-color: var(--line-green); }
+[data-theme] .tc-challenge:nth-child(8n + 5) { border-left-color: var(--line-orange); }
+[data-theme] .tc-challenge:nth-child(8n + 6) { border-left-color: var(--line-purple); }
+[data-theme] .tc-challenge:nth-child(8n + 7) { border-left-color: var(--line-pink); }
+[data-theme] .tc-challenge:nth-child(8n + 8) { border-left-color: var(--line-yellow); }
+[data-theme] .tc-challenge > div:first-child {
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}

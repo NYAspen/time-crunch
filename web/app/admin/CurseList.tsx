@@ -48,7 +48,7 @@ export function CurseList() {
             <button
               disabled={pending}
               onClick={() => run(() => syncTeamSpeed(id))}
-              className="rounded border bg-white px-1.5 text-xs disabled:opacity-50"
+              className="rounded border bg-white px-2 text-sm disabled:opacity-50"
             >
               Fix
             </button>
@@ -63,8 +63,8 @@ export function CurseList() {
       {active.length === 0 && <p className="text-sm text-gray-500">No active curses.</p>}
       <ul className="space-y-2">
         {active.map((c) => (
-          <li key={c.id} className="space-y-1 rounded-lg border border-red-300 bg-red-50 p-3 text-sm">
-            <div>
+          <li key={c.id} className="space-y-2 overflow-hidden border-2 border-red-600 bg-white p-3 pt-0 text-sm">
+            <div className="-mx-3 bg-red-600 px-3 py-1.5 text-white">
               <b>{name(c.attacker_team)}</b> → <b>{name(c.target_team)}</b>: {c.card_name}, since{" "}
               {new Date(c.started_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
             </div>

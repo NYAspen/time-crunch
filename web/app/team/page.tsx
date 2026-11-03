@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
+import { LogoutButton } from "@/components/LogoutButton";
 import { PhaseTag } from "@/components/PhaseBanner";
 import { getCurrentTeam } from "@/lib/auth";
-import { logout } from "../actions";
 import { CurseBanner } from "./CurseBanner";
 import { StealAlert } from "./StealAlert";
 import { TeamClockPanel } from "./TeamClockPanel";
@@ -28,14 +28,12 @@ async function TeamView() {
 
   return (
     <>
-      <header className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold">{team.name}</h1>
-          <PhaseTag />
+      <header className="space-y-2">
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="min-w-0 text-3xl font-bold break-words">{team.name}</h1>
+          <LogoutButton />
         </div>
-        <form action={logout}>
-          <button className="rounded-lg border bg-white px-3 py-2 text-sm text-gray-700">Log out</button>
-        </form>
+        <PhaseTag />
       </header>
       <TeamClockPanel teamId={team.id} />
       <CurseBanner teamId={team.id} />

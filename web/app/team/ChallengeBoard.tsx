@@ -7,6 +7,7 @@ import { loadChallenges, loadGameState, loadTeams } from "@/lib/queries";
 import type { ActionResult, Challenge } from "@/lib/types";
 import { claimChallenge } from "./gameActions";
 import { Notice } from "@/components/Notice";
+import { SignBox } from "@/components/SignBox";
 
 export function ChallengeBoard({ teamId }: { teamId: string }) {
   const { data: challenges, error } = useLiveTable("challenges", loadChallenges);
@@ -36,7 +37,7 @@ export function ChallengeBoard({ teamId }: { teamId: string }) {
       )}
       {active.length === 0 && <p className="text-gray-500">No challenges on the board right now.</p>}
 
-      <ul className="space-y-2">
+      <ul className="tc-stops space-y-2">
         {active.map((challenge) => (
           <ChallengeCard
             key={challenge.id}
@@ -86,14 +87,13 @@ function ChallengeCard({
     });
 
   return (
-    <li className="space-y-2 rounded-xl border bg-white p-4">
+    <li className="tc-challenge space-y-2 rounded-xl border bg-white p-4">
       <div className="text-lg font-semibold">{challenge.title}</div>
       {challenge.task && <p className="whitespace-pre-line text-gray-700">{challenge.task}</p>}
       <ChallengeRewards challenge={challenge} />
 
       {confirming ? (
-        <div className="space-y-2 rounded-lg bg-orange-100 p-3">
-          <p className="font-medium text-orange-950">Did your team complete this challenge?</p>
+        <SignBox tone="orange" title="Did your team complete this challenge?">
           <div className="flex gap-2">
             <button
               disabled={pending}
@@ -110,7 +110,7 @@ function ChallengeCard({
               Cancel
             </button>
           </div>
-        </div>
+        </SignBox>
       ) : (
         <button
           disabled={!canClaim}

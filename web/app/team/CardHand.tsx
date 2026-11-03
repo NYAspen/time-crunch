@@ -8,6 +8,7 @@ import { loadCardDraws, loadCards, loadCardTypes, loadGameState, loadTeams } fro
 import { parseEffect, type ActionResult, type Card, type CardType, type PublicTeam } from "@/lib/types";
 import { chooseCard, discardCard, openDraw, playCard } from "./gameActions";
 import { Notice } from "@/components/Notice";
+import { SignBox } from "@/components/SignBox";
 
 export function CardHand({ teamId }: { teamId: string }) {
   const { data: cards, error } = useLiveTable("cards", loadCards);
@@ -54,34 +55,37 @@ export function CardHand({ teamId }: { teamId: string }) {
       <HandMeter count={hand.length} limit={limit} />
 
       {openDrawRow ? (
-        <div className="space-y-2 rounded-xl border-2 border-purple-400 bg-purple-50 p-3">
-          <div className="font-semibold">
-            {picksLeft === 1 ? "Keep one card" : `Keep ${picksLeft} cards`} ({openDrawRow.source})
-          </div>
+        <SignBox
+          tone="purple"
+          bodyClassName="bg-gray-100"
+          title={`${picksLeft === 1 ? "Keep one card" : `Keep ${picksLeft} cards`} (${openDrawRow.source})`}
+        >
           <p className="text-sm text-gray-600">
             {openDrawRow.kept > 0 ? `${openDrawRow.kept} kept so far. ` : ""}The others go back into the deck.
           </p>
-          {offered.map((card) => {
-            const t = typeOf(card);
-            return t ? (
-              <CardView key={card.id} cardType={t}>
-                <button
-                  disabled={pending}
-                  onClick={() => run(() => chooseCard(card.id))}
-                  className="mt-1 w-full rounded-lg bg-purple-600 p-2 font-semibold text-white disabled:opacity-50"
-                >
-                  Keep this card
-                </button>
-              </CardView>
-            ) : null;
-          })}
-        </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            {offered.map((card) => {
+              const t = typeOf(card);
+              return t ? (
+                <CardView key={card.id} cardType={t} compact>
+                  <button
+                    disabled={pending}
+                    onClick={() => run(() => chooseCard(card.id))}
+                    className="mt-1 w-full rounded-lg bg-purple-600 p-2 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    Keep
+                  </button>
+                </CardView>
+              ) : null;
+            })}
+          </div>
+        </SignBox>
       ) : (
         waiting.length > 0 && (
-          <div className="space-y-2 rounded-xl border-2 border-purple-400 bg-purple-50 p-3">
-            <div className="font-semibold">
-              You have {waiting.length} card draw{waiting.length === 1 ? "" : "s"} waiting
-            </div>
+          <SignBox
+            tone="purple"
+            title={`You have ${waiting.length} card draw${waiting.length === 1 ? "" : "s"} waiting`}
+          >
             <button
               disabled={pending || excess > 0}
               onClick={() => run(openDraw)}
@@ -89,18 +93,17 @@ export function CardHand({ teamId }: { teamId: string }) {
             >
               {drawLabel(waiting[0].size, waiting[0].keep).replace(/^d/, "D")} ({waiting[0].source})
             </button>
-          </div>
+          </SignBox>
         )
       )}
 
       {excess > 0 && (
-        <div className="rounded-xl border-2 border-red-500 bg-red-50 p-3">
-          <div className="font-bold text-red-800">Your hand is over the limit</div>
+        <SignBox tone="red" title="! Your hand is over the limit">
           <p className="text-sm">
-            You hold {hand.length} cards and the limit is {limit}. Discard {excess} card
-            {excess === 1 ? "" : "s"} before you can draw or use cards.
+            You hold {hand.length} cards and the limit is {limit}. Tap <b>Discard</b> on {excess} card
+            {excess === 1 ? "" : "s"} below before you can draw or use cards.
           </p>
-        </div>
+        </SignBox>
       )}
 
       {game.is_paused ? (
@@ -115,22 +118,22 @@ export function CardHand({ teamId }: { teamId: string }) {
       {hand.length === 0 ? (
         <p className="text-gray-500">No cards in your hand yet. Complete challenges to draw cards.</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="grid grid-cols-2 gap-2.5">
           {hand.map((card) => {
             const t = typeOf(card);
             return t ? (
-              <li key={card.id}>
-                <HandCard
-                  card={card}
-                  cardType={t}
-                  hand={hand}
-                  otherTeams={otherTeams}
-                  canUse={!game.is_paused && excess === 0 && (attacksAllowed || !isAttack(t))}
-                  typeOf={typeOf}
-                  pending={pending}
-                  run={run}
-                />
-              </li>
+              <HandCard
+                key={card.id}
+                card={card}
+                cardType={t}
+                hand={hand}
+                otherTeams={otherTeams}
+                canUse={!game.is_paused && excess === 0 && (attacksAllowed || !isAttack(t))}
+                canDiscard={excess > 0}
+                typeOf={typeOf}
+                pending={pending}
+                run={run}
+              />
             ) : null;
           })}
         </ul>
@@ -164,7 +167,7 @@ function HandMeter({ count, limit }: { count: number; limit: number }) {
         {Array.from({ length: Math.max(count, limit) }, (_, i) => (
           <span
             key={i}
-            className={`h-2.5 flex-1 rounded-full ${i < count ? filled : "bg-gray-200"} ${
+            className={`h-3 flex-1 ${i < count ? filled : "bg-gray-200"} ${
               i >= limit ? "ring-2 ring-red-300" : ""
             }`}
           />
@@ -181,6 +184,7 @@ function HandCard({
   hand,
   otherTeams,
   canUse,
+  canDiscard,
   typeOf,
   pending,
   run,
@@ -190,6 +194,7 @@ function HandCard({
   hand: Card[];
   otherTeams: PublicTeam[];
   canUse: boolean; // not while paused or over the hand limit; curses and steals only in Elimination (all checked in the database too)
+  canDiscard: boolean; // Discard only shows while the hand is over the limit
   typeOf: (card: Card) => CardType | undefined;
   pending: boolean;
   run: (action: () => Promise<ActionResult>) => void;
@@ -207,128 +212,137 @@ function HandCard({
   const needsTeam = isCurse || isSteal;
   const ready = canUse && (needsTeam ? !!targetTeam && inRange : isDuplicateEffect ? !!target : true);
 
+  // Compact, two to a row, and it stays that size while being used or
+  // discarded: the confirm controls are stacked to fit the narrow card.
   return (
-    <CardView cardType={cardType} isDuplicate={card.is_duplicate}>
-      {mode === "idle" && (
-        <div className="flex gap-2 pt-1">
-          {isVeto ? (
-            // Veto is never played from here: a Veto button appears when the team
-            // is cursed or has a card stolen.
-            <p className="flex-1 text-xs text-gray-600">
-              Keep this. A Veto button appears when you are cursed or a card is stolen from you.
-            </p>
-          ) : (
-            <button
-              disabled={!canUse}
-              onClick={() => setMode("use")}
-              className="flex-1 rounded-lg bg-gray-900 p-2 font-semibold text-white disabled:opacity-40"
-            >
-              Use
-            </button>
-          )}
-          <button onClick={() => setMode("discard")} className="rounded-lg border bg-white px-3 text-sm">
-            Discard
-          </button>
-        </div>
-      )}
-
-      {mode === "use" && (
-        <div className="space-y-2 rounded-lg bg-white p-2">
-          {needsTeam ? (
-            otherTeams.length === 0 ? (
-              <p className="text-sm">There are no other active teams.</p>
+    <li>
+      <CardView cardType={cardType} isDuplicate={card.is_duplicate} compact>
+        {mode === "idle" && (
+          <div className="flex flex-col items-start gap-2 pt-1">
+            {isVeto ? (
+              // Veto is never played from here: a Veto button appears when the team
+              // is cursed or has a card stolen.
+              <p className="text-xs text-gray-600">
+                A Veto button appears when you are cursed or a card is stolen from you.
+              </p>
             ) : (
-              <>
-                <select
-                  value={targetTeam}
-                  onChange={(e) => setTargetTeam(e.target.value)}
-                  className="w-full rounded border p-2"
-                >
-                  <option value="">{isCurse ? "Choose a team to curse…" : "Choose a team to steal from…"}</option>
-                  {otherTeams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
+              <button
+                disabled={!canUse}
+                onClick={() => setMode("use")}
+                className="w-full rounded-lg bg-gray-900 p-2 font-semibold text-white disabled:opacity-40"
+              >
+                Use
+              </button>
+            )}
+            {canDiscard && (
+              <button
+                onClick={() => setMode("discard")}
+                className="w-full rounded-lg bg-red-600 p-2 text-sm font-bold tracking-wide text-white uppercase"
+              >
+                Discard
+              </button>
+            )}
+          </div>
+        )}
+
+        {mode === "use" && (
+          <div className="space-y-2 border border-gray-300 bg-gray-50 p-1.5">
+            {needsTeam ? (
+              otherTeams.length === 0 ? (
+                <p>There are no other active teams.</p>
+              ) : (
+                <>
+                  <select
+                    value={targetTeam}
+                    onChange={(e) => setTargetTeam(e.target.value)}
+                    className="w-full rounded border bg-white px-1 py-2"
+                  >
+                    <option value="">Pick a team</option>
+                    {otherTeams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="flex items-start gap-1.5 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={inRange}
+                      onChange={(e) => setInRange(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span>We are within range of this team{cardType.range_text ? ` (${cardType.range_text})` : ""}.</span>
+                  </label>
+                </>
+              )
+            ) : isDuplicateEffect ? (
+              others.length === 0 ? (
+                <p>You need another card in your hand to duplicate.</p>
+              ) : (
+                <select value={target} onChange={(e) => setTarget(e.target.value)} className="w-full rounded border bg-white px-1 py-2">
+                  <option value="">Pick a card</option>
+                  {others.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {typeOf(c)?.name}
                     </option>
                   ))}
                 </select>
-                <label className="flex items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={inRange}
-                    onChange={(e) => setInRange(e.target.checked)}
-                    className="mt-1"
-                  />
-                  <span>We are within range of this team{cardType.range_text ? ` (${cardType.range_text})` : ""}.</span>
-                </label>
-              </>
-            )
-          ) : isDuplicateEffect ? (
-            others.length === 0 ? (
-              <p className="text-sm">You need another card in your hand to duplicate.</p>
+              )
             ) : (
-              <select value={target} onChange={(e) => setTarget(e.target.value)} className="w-full rounded border p-2">
-                <option value="">Choose a card to copy…</option>
-                {others.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {typeOf(c)?.name}
-                  </option>
-                ))}
-              </select>
-            )
-          ) : (
-            <p className="text-sm">
-              Use <b>{cardType.name}</b> now? It leaves your hand
-              {effect?.kind === "draw"
-                ? `, and you get a new draw: ${effect.size} cards, keep ${effect.keep}.`
-                : effect?.kind === "hand"
-                  ? `, and your hand limit goes up by ${effect.bonus} for the rest of the game.`
-                  : ", and your team carries out its effect."}
-            </p>
-          )}
-          <div className="flex gap-2">
-            <button
-              disabled={pending || !ready}
-              onClick={() => {
-                setMode("idle");
-                run(() =>
-                  playCard(card.id, {
-                    targetCardId: isDuplicateEffect ? target : undefined,
-                    targetTeamId: needsTeam ? targetTeam : undefined,
-                    inRange: needsTeam ? inRange : undefined,
-                  }),
-                );
-              }}
-              className="flex-1 rounded-lg bg-gray-900 p-2 font-semibold text-white disabled:opacity-40"
-            >
-              Yes, use it
-            </button>
-            <button onClick={() => setMode("idle")} className="flex-1 rounded-lg border p-2">
-              Cancel
-            </button>
+              <p>
+                Use <b>{cardType.name}</b> now? It leaves your hand
+                {effect?.kind === "draw"
+                  ? `, and you get a new draw: ${effect.size} cards, keep ${effect.keep}.`
+                  : effect?.kind === "hand"
+                    ? `, and your hand limit goes up by ${effect.bonus} for the rest of the game.`
+                    : ", and your team carries out its effect."}
+              </p>
+            )}
+            <div className="flex flex-col gap-1.5">
+              <button
+                disabled={pending || !ready}
+                onClick={() => {
+                  setMode("idle");
+                  run(() =>
+                    playCard(card.id, {
+                      targetCardId: isDuplicateEffect ? target : undefined,
+                      targetTeamId: needsTeam ? targetTeam : undefined,
+                      inRange: needsTeam ? inRange : undefined,
+                    }),
+                  );
+                }}
+                className="rounded-lg bg-gray-900 p-2 font-semibold text-white disabled:opacity-40"
+              >
+                Yes, use it
+              </button>
+              <button onClick={() => setMode("idle")} className="rounded-lg border bg-white p-2 text-sm">
+                Cancel
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {mode === "discard" && (
-        <div className="space-y-2 rounded-lg bg-white p-2">
-          <p className="text-sm">Discard {cardType.name}? It goes back into the deck.</p>
-          <div className="flex gap-2">
-            <button
-              disabled={pending}
-              onClick={() => {
-                setMode("idle");
-                run(() => discardCard(card.id));
-              }}
-              className="flex-1 rounded-lg bg-red-600 p-2 font-semibold text-white disabled:opacity-50"
-            >
-              Yes, discard
-            </button>
-            <button onClick={() => setMode("idle")} className="flex-1 rounded-lg border p-2">
-              Cancel
-            </button>
+        {mode === "discard" && (
+          <div className="space-y-2 border border-gray-300 bg-gray-50 p-1.5">
+            <p>Discard {cardType.name}? It goes back into the deck.</p>
+            <div className="flex flex-col gap-1.5">
+              <button
+                disabled={pending}
+                onClick={() => {
+                  setMode("idle");
+                  run(() => discardCard(card.id));
+                }}
+                className="rounded-lg bg-red-600 p-2 font-semibold text-white disabled:opacity-50"
+              >
+                Yes, discard
+              </button>
+              <button onClick={() => setMode("idle")} className="rounded-lg border bg-white p-2 text-sm">
+                Cancel
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-    </CardView>
+        )}
+      </CardView>
+    </li>
   );
 }

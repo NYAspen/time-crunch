@@ -19,6 +19,7 @@ import {
   updateCardType,
 } from "./adminActions";
 import { Notice } from "@/components/Notice";
+import { SignBox } from "@/components/SignBox";
 
 const EXAMPLE =
   "name\ttype\tcopies\tdescription\trange\tclearance\teffect\n" +
@@ -48,9 +49,9 @@ export function CardManager() {
       summary={`${inDeck.length} in deck · ${inPlay.length} held · hand limit ${game.hand_limit}`}
     >
       {inDeck.length === 0 && types.length > 0 && (
-        <p className="rounded-lg bg-yellow-100 p-2 text-sm text-yellow-900">
-          The deck is empty, so teams can&apos;t draw. Add copies or wait for cards to be used.
-        </p>
+        <SignBox tone="yellow" compact title="Note">
+          <p>The deck is empty, so teams can&apos;t draw. Add copies or wait for cards to be used.</p>
+        </SignBox>
       )}
 
       <form action={limitAction} className="flex items-center gap-2">

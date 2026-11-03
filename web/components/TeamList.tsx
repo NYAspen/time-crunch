@@ -18,14 +18,14 @@ export function TeamList({ highlightTeamId }: { highlightTeamId?: string }) {
             {team.name}
             {team.id === highlightTeamId && " (you)"}
             {team.status === "active" && team.speed !== 1 && (
-              <span className="ml-2 rounded bg-orange-100 px-1.5 text-sm font-bold text-orange-800">{team.speed}×</span>
+              <span className="ml-2 rounded-sm border-2 border-orange-600 px-1 text-xs font-bold text-orange-700">{team.speed}×</span>
             )}
           </span>
           <span
             className={
               team.status === "active"
-                ? "rounded-full bg-green-100 px-2 py-0.5 text-sm text-green-800"
-                : "rounded-full bg-gray-200 px-2 py-0.5 text-sm text-gray-600"
+                ? "rounded-sm border-2 border-green-600 px-1.5 text-xs font-bold uppercase tracking-wide text-green-700"
+                : "rounded-sm border-2 border-gray-400 px-1.5 text-xs font-bold uppercase tracking-wide text-gray-600"
             }
           >
             {team.status === "active" ? "Active" : "Eliminated"}

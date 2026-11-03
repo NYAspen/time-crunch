@@ -9,6 +9,7 @@ import { loadClocks, loadGameState, loadTeams } from "@/lib/queries";
 import { SPEEDS, type ActionResult, type GameState, type PublicTeam, type TeamClock } from "@/lib/types";
 import { adjustTime, setTeamSpeed, setTeamStatus } from "./adminActions";
 import { Notice } from "@/components/Notice";
+import { speedButtonClass } from "@/components/speedStyles";
 
 export function TeamClocks() {
   const { data: game } = useLiveTable("game_state", loadGameState);
@@ -72,13 +73,13 @@ function ClockRow({
 
   return (
     <li
-      className={`space-y-2 rounded-lg border p-3 ${team.speed !== 1 && !eliminated ? "border-orange-400 bg-orange-50" : ""}`}
+      className={`space-y-2 rounded-lg border p-3 ${team.speed !== 1 && !eliminated ? "border-2 border-l-8 border-orange-600" : ""}`}
     >
       <div className="flex items-center justify-between gap-2">
         <span className={`font-medium ${eliminated ? "text-gray-400 line-through" : ""}`}>{team.name}</span>
         <div className="flex items-center gap-2">
           {!eliminated && team.speed !== 1 && (
-            <span className="rounded bg-orange-200 px-1.5 text-sm font-bold text-orange-900">{team.speed}×</span>
+            <span className="rounded-sm border-2 border-orange-600 px-1 text-xs font-bold text-orange-700">{team.speed}×</span>
           )}
           <Countdown game={game} team={team} clock={clock} serverNow={serverNow} size="small" />
           <button onClick={() => setOpen(!open)} className="rounded border px-2 py-1 text-sm">
@@ -116,9 +117,7 @@ function ClockRow({
                 key={speed}
                 disabled={pending || speed === team.speed}
                 onClick={() => run(() => setTeamSpeed(team.id, speed))}
-                className={`flex-1 rounded border p-2 text-sm font-bold ${
-                  speed === team.speed ? "bg-gray-900 text-white" : "bg-white"
-                }`}
+                className={`flex-1 p-2 text-sm ${speedButtonClass(speed, speed === team.speed)}`}
               >
                 {speed}×
               </button>

@@ -8,6 +8,7 @@ import type { ActionResult } from "@/lib/types";
 import { clearCurse, syncMySpeed, vetoCurse } from "./gameActions";
 import { useHasVeto } from "./StealAlert";
 import { Notice } from "@/components/Notice";
+import { SignBox } from "@/components/SignBox";
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
@@ -60,8 +61,7 @@ export function CurseBanner({ teamId }: { teamId: string }) {
       <Notice result={result} />
 
       {onMe && (
-        <div className="space-y-2 rounded-xl border-2 border-red-500 bg-red-50 p-4">
-          <div className="text-lg font-bold text-red-800">You are cursed!</div>
+        <SignBox tone="red" title="! You are cursed">
           <p>
             <b>{name(onMe.attacker_team)}</b> played <b>{onMe.card_name}</b> on you at {time(onMe.started_at)}.
           </p>
@@ -118,16 +118,16 @@ export function CurseBanner({ teamId }: { teamId: string }) {
               )}
             </>
           )}
-        </div>
+        </SignBox>
       )}
 
       {byMe.map((c) => (
-        <div key={c.id} className="space-y-2 rounded-xl border-2 border-orange-400 bg-orange-50 p-4">
+        <SignBox key={c.id} tone="orange" title="Your curse is active">
           <p>
             Your curse <b>{c.card_name}</b> on <b>{name(c.target_team)}</b> is active (since {time(c.started_at)}). Your
             clock runs 1× slower until they clear it.
           </p>
-        </div>
+        </SignBox>
       ))}
 
       {(onMe || byMe.length > 0) && speedStatus}

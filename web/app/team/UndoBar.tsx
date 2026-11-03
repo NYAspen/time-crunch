@@ -46,23 +46,26 @@ export function UndoBar({ teamId }: { teamId: string }) {
           return (
             <div
               key={u.id}
-              className="flex items-center gap-2 rounded-xl border-2 border-blue-300 bg-blue-50 px-3 py-2 shadow-lg"
+              className="flex items-stretch overflow-hidden border-2 border-gray-900 bg-white shadow-lg"
             >
-              <span className="min-w-0 flex-1 text-sm">
+              <span aria-hidden className="flex w-10 shrink-0 items-center justify-center bg-gray-900 text-xl text-white">
+                ↶
+              </span>
+              <span className="min-w-0 flex-1 self-center py-2 pl-1 text-sm">
                 <b>{u.label}</b>
                 <span className="block text-xs text-gray-600">Mistake? You can undo for {secondsLeft} s.</span>
               </span>
               <button
                 disabled={pending}
                 onClick={() => undo(u.id)}
-                className="rounded-lg bg-blue-600 px-3 py-2 font-semibold text-white disabled:opacity-50"
+                className="my-2 bg-blue-600 px-4 font-bold text-white disabled:opacity-50"
               >
                 Undo
               </button>
               <button
                 onClick={() => setClosed([...closed, u.id])}
                 aria-label="Close"
-                className="px-1 text-xl leading-none text-gray-500"
+                className="px-3 text-xl leading-none text-gray-500"
               >
                 ×
               </button>
