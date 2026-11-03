@@ -388,7 +388,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - `card_draws.challenge_id` links a draw to its claim.
   - `rls-check.mjs` has 4 new checks (40).
 
-- **Undo from the activity log** (migration `0014_activity_undo.sql`, 2026-10-26; **not yet run**, run after 0013):
+- **Undo from the activity log** (migration `0014_activity_undo.sql`, 2026-10-26; run):
   - The admin **Time history** section was removed. The **Activity log** is the one admin history: readable entries with team names, amounts and speeds, an **Undo** button (with confirm) on undoable entries, and undone entries struck through.
   - `admin_undo_activity(entry)` undoes: claims (challenge back, bonus reversed, draw cancelled), card uses and curses, discards, curse clears, admin time adjustments, speed changes (shifted back by the change, so later curses still count) and eliminations (team revived).
   - An entry is matched to what it changed by team + timestamp (one action's writes share `now()`). Card uses and discards from before 0013 can't be undone this way; use Move.
@@ -408,7 +408,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
     - Time history was its own section above the Activity log (removed 2026-10-26; undo is in the Activity log)
     - home and admin pages keep the full phase banner
 
-- **Power-ups** (migration `0015_powerups.sql`, 2026-11-02; **not yet run**, run after 0014):
+- **Power-ups** (migration `0015_powerups.sql`, 2026-11-02; run):
   - `draw X pick Y`: a new draw that keeps Y of X (`card_draws.keep` / `kept`). `choose_card` keeps the draw open until Y are kept. A draw showing no more than Y cards goes straight into the hand. Challenge draws stay keep 1.
   - `hand +N`: `teams.hand_bonus` (public) is added to the game's limit (`_hand_limit(team)`) for the rest of the game. Reset sets it back to 0.
   - `steal`: Elimination only, with a range confirmation (like curses). Moves a random card from the target's hand and records a `steals` row (attacker, target or admin can read it).
@@ -426,7 +426,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - **Consistency rules:** anything needing attention (curses, steals, confirmations, warnings, admin notes, draws) uses `components/SignBox.tsx` (coloured heading bar + white panel; red / orange / purple / yellow / green / black). The home and login pages start with `components/PageSign.tsx` (black station-name sign with a Purple Line bar). No pale tinted or rounded boxes.
   - Mobile defaults in `app/globals.css`: text boxes and dropdowns always 16px (stops iPhone zoom), buttons and dropdowns at least 36px tall, roomier fold-out headings, 20px checkboxes. Checked at 360px and 390px wide: no sideways scrolling on any page.
 
-- **Rule and UI changes** (migration `0016_rules_nov3.sql`, 2026-11-03; **not yet run**, run after 0015):
+- **Rule and UI changes** (migration `0016_rules_nov3.sql`, 2026-11-03; run):
   - Challenges have a `location` (shown as "Location: …", blank = "Anywhere") and `reward_keep` ("draw 4 pick 2"). Import and admin edit include both.
   - Challenges can only be completed in Preparation (`claim_challenge` checks it); the team Challenges tab disappears in Elimination.
   - Steals can be played in either phase; curses stay Elimination only.
