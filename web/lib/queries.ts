@@ -25,7 +25,7 @@ export async function loadGameState(): Promise<GameState> {
 export async function loadTeams(): Promise<PublicTeam[]> {
   const { data, error } = await createClient()
     .from("teams")
-    .select("id, name, status, speed, eliminated_at, hand_bonus")
+    .select("id, name, status, speed, eliminated_at, hand_bonus, reward_multiplier")
     .order("name");
   if (error) throw new Error(error.message);
   return data;
@@ -65,7 +65,7 @@ export async function loadActivityLog(): Promise<ActivityLogEntry[]> {
 export async function loadChallenges(): Promise<Challenge[]> {
   const { data, error } = await createClient()
     .from("challenges")
-    .select("id, title, task, location, reward_cards, reward_keep, reward_minutes, status, activated_at, claimed_by, claimed_at")
+    .select("id, title, task, location, reward_cards, reward_keep, reward_minutes, status, activated_at, claimed_by, claimed_at, claim_multiplier, locked_by")
     .order("created_at");
   if (error) throw new Error(error.message);
   return data;
@@ -122,7 +122,7 @@ export async function loadCurses(): Promise<Curse[]> {
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { data, error } = await createClient()
     .from("curses")
-    .select("id, attacker_team, target_team, card_name, range_text, clearance, status, started_at, cleared_at")
+    .select("id, attacker_team, target_team, card_name, range_text, clearance, status, started_at, cleared_at, attacker_gain")
     .or(`status.eq.active,cleared_at.gte.${since}`)
     .order("started_at", { ascending: false });
   if (error) throw new Error(error.message);

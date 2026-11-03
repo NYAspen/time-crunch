@@ -30,12 +30,23 @@ export async function claimChallenge(challengeId: string): Promise<ActionResult>
   const { data, error } = await supabase.rpc("claim_challenge", { p_challenge: challengeId });
   if (error) return { ok: false, message: error.message };
 
-  const { title, minutes, cards, keep } = data as { title: string; minutes: number; cards: number; keep?: number };
+  const { title, minutes, cards, keep, draws, multiplier } = data as {
+    title: string;
+    minutes: number;
+    cards: number;
+    keep?: number;
+    draws?: number; // several when a "reward xN" was waiting
+    multiplier?: number;
+  };
+  const drawCount = draws ?? 1;
   const rewards = [
     minutes > 0 ? `+${minutes} min` : null,
-    cards > 0 ? `${drawLabel(cards, keep)} (open the Cards tab to draw)` : null,
+    cards > 0
+      ? `${drawCount > 1 ? `${drawCount} × ` : ""}${drawLabel(cards, keep)} (open the Cards tab to draw)`
+      : null,
   ].filter(Boolean);
-  return { ok: true, message: `You completed "${title}"!${rewards.length ? ` ${rewards.join(", ")}.` : ""}` };
+  const boosted = multiplier && multiplier > 1 ? ` Reward ×${multiplier}:` : "";
+  return { ok: true, message: `You completed "${title}"!${boosted}${rewards.length ? ` ${rewards.join(", ")}.` : ""}` };
 }
 
 // ---------------------------------------------------------------------------
@@ -59,7 +70,14 @@ export async function chooseCard(cardId: string): Promise<ActionResult> {
 
 export async function playCard(
   cardId: string,
-  options: { targetCardId?: string; targetTeamId?: string; inRange?: boolean } = {},
+  options: {
+    targetCardId?: string; // duplicate: the card to copy
+    targetTeamId?: string; // curse / steal / curse copy
+    inRange?: boolean;
+    curseId?: string; // curse xN / curse copy: one of your active curses
+    challengeId?: string; // replace / lock challenge
+    cardIds?: string[]; // discard X draw Y: the cards to discard
+  } = {},
 ): Promise<ActionResult> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc("use_card", {
@@ -67,6 +85,9 @@ export async function playCard(
     p_target: options.targetCardId ?? null,
     p_target_team: options.targetTeamId ?? null,
     p_in_range: options.inRange ?? false,
+    p_curse: options.curseId ?? null,
+    p_challenge: options.challengeId ?? null,
+    p_cards: options.cardIds ?? null,
   });
   if (error) return { ok: false, message: error.message };
   return { ok: true, message: data ? String(data) : "Card used." };

@@ -32,6 +32,7 @@ export type PublicTeam = {
   speed: number;
   eliminated_at: string | null;
   hand_bonus: number; // extra hand-limit slots from "hand +N" cards (migration 0015)
+  reward_multiplier: number; // "reward xN" waiting for the team's next challenge (migration 0019)
 };
 
 // Private: a team can only read its own clock; admins can read all.
@@ -70,6 +71,8 @@ export type Challenge = {
   activated_at: string | null;
   claimed_by: string | null;
   claimed_at: string | null;
+  claim_multiplier: number; // the "reward xN" a claim used (migration 0019)
+  locked_by: string | null; // "lock challenge": only this team can complete it
 };
 
 export const CARD_TYPES = ["curse", "powerup"] as const;
@@ -82,14 +85,26 @@ export const CARD_TYPE_LABELS: Record<CardTypeKind, string> = { curse: "Curse", 
 //   veto           cancel a curse on you, or take back a card stolen in the last 60 s
 //   draw X pick Y  a new draw: X cards shown, keep Y (X up to 10)
 //   hand +N        hand limit +N for the rest of the game (N up to 9)
-export const CARD_EFFECTS_HELP = "duplicate, steal, veto, draw X pick Y (e.g. draw 4 pick 2), hand +N (e.g. hand +1)";
+// Migration 0019:
+//   reward xN          next completed challenge gives N× time and N draws (Preparation)
+//   curse xN           on one of your active curses: you gain N× from it (Elimination)
+//   curse copy         put one of your active curses on a second team too (Elimination, in range)
+//   discard X draw Y   discard X other cards, then draw Y straight into your hand
+//   replace challenge  swap a board challenge for a random one from the pool (Preparation)
+//   lock challenge     only your team can complete that challenge (Preparation, one at a time)
+export const CARD_EFFECTS_HELP =
+  "duplicate, steal, veto, draw X pick Y (e.g. draw 4 pick 2), hand +N (e.g. hand +1), reward x2, curse x2, " +
+  "curse copy, discard X draw Y (e.g. discard 2 draw 3), replace challenge, lock challenge";
 export type CardEffect = string;
 
 export type ParsedEffect =
   | { kind: "none" }
   | { kind: "duplicate" | "steal" | "veto" }
   | { kind: "draw"; size: number; keep: number }
-  | { kind: "hand"; bonus: number };
+  | { kind: "hand"; bonus: number }
+  | { kind: "reward" | "curseBoost"; factor: number }
+  | { kind: "curseCopy" | "replaceChallenge" | "lockChallenge" }
+  | { kind: "discardDraw"; discard: number; draw: number };
 
 // null if the text isn't a valid effect.
 export function parseEffect(effect: string | null): ParsedEffect | null {
@@ -103,6 +118,16 @@ export function parseEffect(effect: string | null): ParsedEffect | null {
   }
   const hand = /^hand \+([1-9])$/.exec(effect);
   if (hand) return { kind: "hand", bonus: Number(hand[1]) };
+  const times = /^(reward|curse) x([2-9])$/.exec(effect);
+  if (times) return { kind: times[1] === "reward" ? "reward" : "curseBoost", factor: Number(times[2]) };
+  if (effect === "curse copy") return { kind: "curseCopy" };
+  if (effect === "replace challenge") return { kind: "replaceChallenge" };
+  if (effect === "lock challenge") return { kind: "lockChallenge" };
+  const swap = /^discard ([1-9]) draw (\d+)$/.exec(effect);
+  if (swap) {
+    const draw = Number(swap[2]);
+    return draw >= 1 && draw <= 10 ? { kind: "discardDraw", discard: Number(swap[1]), draw } : null;
+  }
   return null;
 }
 
@@ -158,6 +183,7 @@ export type Curse = {
   status: "active" | "cleared";
   started_at: string;
   cleared_at: string | null;
+  attacker_gain: number; // the attacker's speed shifts by -attacker_gain ("curse xN", migration 0019)
 };
 
 // A card taken by a steal card. Teams see steals they made or suffered (RLS).

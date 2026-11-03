@@ -5,6 +5,11 @@ Brain Freeze,curse,1,The target team's countdown runs at 2x (and yours at 0x) un
 Duplicate,powerup,3,Duplicate another card in your hand.,,,duplicate
 Veto,powerup,2,Cancel a curse on your team or take back a card stolen from you within 60 seconds.,,,veto
 Tourist Trap,curse,2,The target team's countdown runs at 2x (and yours at 0x) until they clear it.,1 km,Take a selfie with a stranger.,
-Lucky Draw,powerup,2,Draw 4 cards and keep 2.,,,draw 4 pick 2
-Deep Pockets,powerup,2,Your hand limit goes up by 1 for the rest of the game.,,,hand +1
-Pickpocket,powerup,2,Take a random card from another team's hand.,500 m,,steal
+Increase Hand Size,powerup,2,Your hand limit goes up by 1 for the rest of the game.,,,hand +1
+Steal,powerup,2,Take a random card from another team's hand.,500 m,,steal
+Double Reward,powerup,2,Your next completed challenge gives double the time bonus and double the card draws.,,,reward x2
+Siphon Boost,powerup,2,Pick one of your active curses: you gain 2x from it until it is cleared.,,,curse x2
+Spread the Curse,powerup,1,Pick one of your active curses and put it on a second team too.,,,curse copy
+Discard 2 draw 3,powerup,2,Discard 2 other cards and draw 3.,,,discard 2 draw 3
+Replace Challene,powerup,2,Send one challenge on the board back to the pool; a random one replaces it.,,,replace challenge
+Lock Challenge,powerup,2,Lock one challenge on the board so only your team can complete it.,,,lock challenge

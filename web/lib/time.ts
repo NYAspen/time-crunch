@@ -10,9 +10,13 @@ export function remainingMs(clock: TeamClock, serverNowMs: number) {
 }
 
 // Each curse on a team adds 1×; each curse it has played subtracts 1×.
-export function curseSpeed(teamId: string, activeCurses: { target_team: string; attacker_team: string }[]) {
+export function curseSpeed(
+  teamId: string,
+  activeCurses: { target_team: string; attacker_team: string; attacker_gain: number }[],
+) {
   const on = activeCurses.filter((c) => c.target_team === teamId).length;
-  const by = activeCurses.filter((c) => c.attacker_team === teamId).length;
+  // A boosted curse ("curse xN") takes more off the attacker.
+  const by = activeCurses.filter((c) => c.attacker_team === teamId).reduce((sum, c) => sum + c.attacker_gain, 0);
   return 1 + on - by;
 }
 

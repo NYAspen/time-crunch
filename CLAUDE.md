@@ -206,7 +206,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - Challenges and cards are CSV files in `content/`, editable in Google Sheets or Excel.
 - They are loaded through an admin Import screen.
 - **Challenges** (`content/challenges-example.csv`) have the columns `title, task, location, reward_cards, reward_keep, reward_minutes`. `location` (blank = anywhere) and `reward_keep` (default 1) are optional. Copy the rows from Google Sheets, headers included, into Admin → Challenges → Import. Imported challenges go into the hidden pool, and the board fills from it at random.
-- **Cards** (`content/cards-example.csv`) have the columns `name, type, copies, description, range, clearance, effect`. `type` is `curse` or `powerup`; `effect` is blank (manual), `duplicate`, `steal`, `veto`, `draw X pick Y` or `hand +N`. Import them in Admin → Cards → Import cards.
+- **Cards** (`content/cards-example.csv`) have the columns `name, type, copies, description, range, clearance, effect`. `type` is `curse` or `powerup`; `effect` is blank (manual), `duplicate`, `steal`, `veto`, `draw X pick Y`, `hand +N`, `reward xN`, `curse xN`, `curse copy`, `discard X draw Y`, `replace challenge` or `lock challenge`. Import them in Admin → Cards → Import cards.
 
 **Fresh test game:** the admin-only "Reset game" (type RESET to confirm) works like this:
 - It clears time, time history, claims, hands, draws, curses and the activity log.
@@ -438,15 +438,26 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - A steal on a team with no cards shows a small "Steal failed" note on the steal card; the card stays in the hand.
   - The team page shows the same big yellow "Game paused" box as the admin page (`PausedBox` in `components/PhaseBanner.tsx`) instead of a small badge.
 
-- **Curse pairs and speed arrows** (migration `0017_curse_pairs_speed_arrows.sql`, 2026-11-03; **not run yet**):
+- **Curse pairs and speed arrows** (migration `0017_curse_pairs_speed_arrows.sql`, 2026-11-03; run):
   - The unique index is now one active curse per (attacker, target) pair. `use_card` and `_restart_curse` check the pair.
   - The curse banner lists every curse on the team, each with its own Task done / Veto. The team picker on a curse card greys out teams you already curse.
   - `step_my_speed(±1)` and `admin_step_speed(team, ±1)` replace the 0×/1×/2× buttons (`components/SpeedStepper.tsx`, −20× to 20×). The team's arrows sit inside the countdown box. `set_my_speed` / `admin_set_speed` still exist but the app no longer calls them.
   - `rls-check.mjs` has 1 new check.
-- **Speed arrows and curse signs, round 2** (migration `0018_speed_step_batch.sql`, 2026-11-03; **not run yet**, run after 0017):
+- **Speed arrows and curse signs, round 2** (migration `0018_speed_step_batch.sql`, 2026-11-03; run):
   - The team's ▲ / speed / ▼ column sits right of the countdown digits (`Countdown` `side` slot; the digits shrink on narrow phones).
   - `SpeedStepper` shows each tap at once, then sends the taps together after a 0.45 s pause as one change (`step_my_speed` / `admin_step_speed` now take any delta), so fast tapping doesn't lag and the log gets one line.
   - Curse signs: each curse on the team is a red sign ("Cursed by …", card name, +1× tag, To clear, since time, Task done / Veto). Curses the team played are one orange "Your curses (n)" sign with a row per curse (target, what they must do, since time).
+
+- **Six more power-ups** (migration `0019_more_powerups.sql`, 2026-11-03; run):
+  - `reward xN` (Preparation): the team's next completed challenge gives N× the time bonus and N separate draws (`teams.reward_multiplier`, used up by `claim_challenge`; `challenges.claim_multiplier` so Undo claim gives it back). A green "Your next challenge is worth ×N" sign shows on the board.
+  - `curse xN` (Elimination): played on one of the team's active curses; the attacker gains N× (`curses.attacker_gain`, speed shifts by −gain). The victim stays +1×. Every place that starts, ends, restarts or undoes a curse uses `attacker_gain`, and so does `_curse_speed` / `curseSpeed`.
+  - **The ×N power-ups don't stack**: one reward bonus waiting at a time, and a curse can only be boosted once (server refuses; the phone greys them out).
+  - `curse copy` (Elimination, range confirm): one of the team's active curses goes on a second team too, as its own curse (one per pair still applies). Logged as `curse_started`.
+  - `discard X draw Y`: tick X other cards to discard; a "draw Y keep Y" draw is queued.
+  - `replace challenge` (Preparation): the chosen board challenge goes back to the pool and a random one replaces it (it can't come straight back). A challenge another team has locked can't be replaced.
+  - `lock challenge` (Preparation): only the locking team can complete it; one lock per team (`challenges.locked_by`, unique index). A trigger clears the lock whenever the challenge leaves the board (claimed, removed, replaced, reset).
+  - `use_card` gained `p_curse`, `p_challenge`, `p_cards`. Team Undo (60 s) and admin activity-log Undo cover all six.
+  - Sample cards for each in `content/cards-example.csv`.
 
 ### Outstanding
 - Full-loop test on several phones.
@@ -531,4 +542,5 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - 2026-11-02: **Discard only shows when a hand is over the limit** (team Cards tab). Otherwise cards can only be used. The database still allows discarding at any time, and the admin can still move cards back to the deck.
 - 2026-11-03: **Challenges are Preparation only** (board hidden in Elimination); **steals allowed in Preparation**; **an eliminated team's curses end** (no time transfer after elimination; the few seconds between hitting zero and the server noticing are not refunded). Challenges get a location and "draw N pick K" rewards (migration 0016).
 - 2026-11-03: **Several curses per team, one per pair of teams** (D10), and **speed arrows** (D13): teams step their own speed 1× at a time, −20× to 20×, instead of picking 0×/1×/2×. Default chosen: teams can step below 0× by hand too (logged and public). Alternative if abused: limit teams' own arrows to 0×–2× and leave the full range to the admin.
+- 2026-11-03: **Six more power-ups** (migration 0019). Defaults confirmed: reward ×N applies to the *next* completion (time and draws); curse ×N is played on an active curse and only boosts the attacker's gain; curse copy is played on an active curse; a lock lasts until the team completes it, one lock per team. **×N power-ups don't stack.** Defaults chosen: discard X draw Y keeps all Y drawn; a replaced challenge goes back to the pool.
 - 2026-10-23: **Curses can't be played during Preparation**, only during Elimination (D11). Teams can still draw and hold them in the morning.

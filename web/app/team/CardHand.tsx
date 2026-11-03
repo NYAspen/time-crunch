@@ -4,8 +4,18 @@ import { useState, useTransition } from "react";
 import { CardView } from "@/components/CardView";
 import { drawLabel } from "@/components/ChallengeRewards";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
-import { loadCardDraws, loadCards, loadCardTypes, loadCurses, loadGameState, loadTeams } from "@/lib/queries";
-import { parseEffect, type ActionResult, type Card, type CardType, type PublicTeam } from "@/lib/types";
+import { loadCardDraws, loadCards, loadCardTypes, loadChallenges, loadCurses, loadGameState, loadTeams } from "@/lib/queries";
+import {
+  parseEffect,
+  type ActionResult,
+  type Card,
+  type CardType,
+  type Challenge,
+  type Curse,
+  type ParsedEffect,
+  type Phase,
+  type PublicTeam,
+} from "@/lib/types";
 import { chooseCard, discardCard, openDraw, playCard } from "./gameActions";
 import { Notice } from "@/components/Notice";
 import { SignBox } from "@/components/SignBox";
@@ -17,6 +27,7 @@ export function CardHand({ teamId }: { teamId: string }) {
   const { data: teams } = useLiveTable("teams", loadTeams);
   const { data: game } = useLiveTable("game_state", loadGameState);
   const { data: curses } = useLiveTable("curses", loadCurses);
+  const { data: challenges } = useLiveTable("challenges", loadChallenges);
   const [result, setResult] = useState<ActionResult>(null);
   const [pending, startTransition] = useTransition();
 
@@ -31,17 +42,20 @@ export function CardHand({ teamId }: { teamId: string }) {
   const waiting = draws.filter((d) => d.team_id === teamId && d.status === "pending");
   const otherTeams = teams.filter((t) => t.id !== teamId && t.status === "active");
   // Only one curse at a time from this team on each other team (checked in the database too).
-  const cursing = new Set(
-    (curses ?? []).filter((c) => c.status === "active" && c.attacker_team === teamId).map((c) => c.target_team),
-  );
-  // Curses can only be played during Elimination (checked in the database too).
-  // Steals work in either phase.
-  const attacksAllowed = game.phase === "elimination";
-  const isAttack = (t: CardType) => t.type === "curse";
-  const holdsAttack = hand.some((c) => {
-    const t = typeOf(c);
-    return !!t && isAttack(t);
-  });
+  const myCurses = (curses ?? []).filter((c) => c.status === "active" && c.attacker_team === teamId);
+  const cursing = new Set(myCurses.map((c) => c.target_team));
+  const board = (challenges ?? [])
+    .filter((c) => c.status === "active")
+    .sort((a, b) => (a.activated_at ?? "").localeCompare(b.activated_at ?? ""));
+  const teamName = (id: string | null) => teams.find((t) => t.id === id)?.name ?? "another team";
+  // Curses (and power-ups that work on curses) only during Elimination;
+  // challenge power-ups only during Preparation. Steals work in either phase.
+  // All checked in the database too.
+  const holds = (phase: Phase) =>
+    hand.some((c) => {
+      const t = typeOf(c);
+      return !!t && phaseNeeded(t) === phase;
+    });
   // The game's limit plus this team's "hand +N" bonus. Over it, the team must
   // discard before it can draw or use cards (also checked in the database).
   const limit = game.hand_limit + (teams.find((t) => t.id === teamId)?.hand_bonus ?? 0);
@@ -50,6 +64,7 @@ export function CardHand({ teamId }: { teamId: string }) {
   // An eliminated team keeps its cards but can't draw, use or discard them
   // (checked in the database too); the admin can still move them.
   const eliminated = teams.find((t) => t.id === teamId)?.status !== "active";
+  const rewardWaiting = teams.find((t) => t.id === teamId)?.reward_multiplier ?? 1;
 
   const run = (action: () => Promise<ActionResult>) =>
     startTransition(async () => {
@@ -119,10 +134,13 @@ export function CardHand({ teamId }: { teamId: string }) {
 
       {eliminated ? null : game.is_paused ? (
         <p className="text-sm text-gray-600">The game is paused. Cards can be used again when it resumes.</p>
-      ) : (
-        !attacksAllowed &&
-        holdsAttack && (
+      ) : game.phase === "preparation" ? (
+        holds("elimination") && (
           <p className="text-sm text-gray-600">Curses can be played once Elimination starts.</p>
+        )
+      ) : (
+        holds("preparation") && (
+          <p className="text-sm text-gray-600">Challenge power-ups only work during Preparation.</p>
         )
       )}
 
@@ -140,7 +158,18 @@ export function CardHand({ teamId }: { teamId: string }) {
                 hand={hand}
                 otherTeams={otherTeams}
                 cursing={cursing}
-                canUse={!eliminated && !game.is_paused && excess === 0 && (attacksAllowed || !isAttack(t))}
+                myCurses={myCurses}
+                board={board}
+                teamId={teamId}
+                teamName={teamName}
+                canUse={
+                  !eliminated &&
+                  !game.is_paused &&
+                  excess === 0 &&
+                  (phaseNeeded(t) ?? game.phase) === game.phase &&
+                  // Reward bonuses don't stack: one waiting at a time.
+                  !(parseEffect(t.effect)?.kind === "reward" && rewardWaiting > 1)
+                }
                 canDiscard={!eliminated && excess > 0}
                 typeOf={typeOf}
                 pending={pending}
@@ -152,6 +181,15 @@ export function CardHand({ teamId }: { teamId: string }) {
       )}
     </section>
   );
+}
+
+// The phase a card can only be played in, or null for either.
+function phaseNeeded(t: CardType): Phase | null {
+  if (t.type === "curse") return "elimination";
+  const kind = parseEffect(t.effect)?.kind;
+  if (kind === "curseBoost" || kind === "curseCopy") return "elimination";
+  if (kind === "reward" || kind === "replaceChallenge" || kind === "lockChallenge") return "preparation";
+  return null;
 }
 
 // Big "3 / 5" count with one slot per allowed card: grey with room left,
@@ -196,6 +234,10 @@ function HandCard({
   hand,
   otherTeams,
   cursing,
+  myCurses,
+  board,
+  teamId,
+  teamName,
   canUse,
   canDiscard,
   typeOf,
@@ -207,6 +249,10 @@ function HandCard({
   hand: Card[];
   otherTeams: PublicTeam[];
   cursing: Set<string>; // teams this team already has a curse on
+  myCurses: Curse[]; // this team's active curses (curse xN / curse copy)
+  board: Challenge[]; // challenges on the board (replace / lock challenge)
+  teamId: string;
+  teamName: (id: string | null) => string;
   canUse: boolean; // not while paused or over the hand limit; curses only in Elimination (all checked in the database too)
   canDiscard: boolean; // Discard only shows while the hand is over the limit
   typeOf: (card: Card) => CardType | undefined;
@@ -217,6 +263,9 @@ function HandCard({
   const [target, setTarget] = useState(""); // duplicate: card to copy
   const [targetTeam, setTargetTeam] = useState(""); // curse / steal: the other team
   const [inRange, setInRange] = useState(false);
+  const [curseId, setCurseId] = useState(""); // curse xN / curse copy: one of your curses
+  const [challengeId, setChallengeId] = useState(""); // replace / lock challenge
+  const [picked, setPicked] = useState<string[]>([]); // discard X draw Y: cards to discard
   const [stealFailed, setStealFailed] = useState<ActionResult>(null); // shown on this card
   const others = hand.filter((c) => c.id !== card.id);
   const isCurse = cardType.type === "curse";
@@ -224,8 +273,22 @@ function HandCard({
   const isDuplicateEffect = effect?.kind === "duplicate";
   const isSteal = effect?.kind === "steal";
   const isVeto = effect?.kind === "veto";
-  const needsTeam = isCurse || isSteal;
-  const ready = canUse && (needsTeam ? !!targetTeam && inRange : isDuplicateEffect ? !!target : true);
+  const isCurseCopy = effect?.kind === "curseCopy";
+  const needsTeam = isCurse || isSteal || isCurseCopy;
+  const needsCurse = effect?.kind === "curseBoost" || isCurseCopy;
+  const needsChallenge = effect?.kind === "replaceChallenge" || effect?.kind === "lockChallenge";
+  const discardCount = effect?.kind === "discardDraw" ? effect.discard : 0;
+  const ready =
+    canUse &&
+    (!needsTeam || (!!targetTeam && inRange)) &&
+    (!needsCurse || !!curseId) &&
+    (!needsChallenge || !!challengeId) &&
+    picked.length === discardCount &&
+    (!isDuplicateEffect || !!target);
+  // A curse copy's range is the copied curse's range.
+  const rangeText = isCurseCopy
+    ? (myCurses.find((c) => c.id === curseId)?.range_text ?? "")
+    : cardType.range_text;
 
   // Compact, two to a row, and it stays that size while being used or
   // discarded: the confirm controls are stacked to fit the narrow card.
@@ -267,6 +330,78 @@ function HandCard({
 
         {mode === "use" && (
           <div className="space-y-2 border border-gray-300 bg-gray-50 p-1.5">
+            {needsCurse &&
+              (myCurses.length === 0 ? (
+                <p>You need an active curse on another team first.</p>
+              ) : (
+                <select
+                  value={curseId}
+                  onChange={(e) => setCurseId(e.target.value)}
+                  className="w-full rounded border bg-white px-1 py-2"
+                >
+                  <option value="">Pick one of your curses</option>
+                  {myCurses.map((c) => (
+                    // Boosts don't stack: a boosted curse can't be boosted again.
+                    <option
+                      key={c.id}
+                      value={c.id}
+                      disabled={effect?.kind === "curseBoost" && c.attacker_gain > 1}
+                    >
+                      {c.card_name} on {teamName(c.target_team)}
+                      {c.attacker_gain > 1 ? ` (already boosted: you gain ${c.attacker_gain}×)` : ""}
+                    </option>
+                  ))}
+                </select>
+              ))}
+            {needsChallenge &&
+              (board.length === 0 ? (
+                <p>There are no challenges on the board.</p>
+              ) : (
+                <select
+                  value={challengeId}
+                  onChange={(e) => setChallengeId(e.target.value)}
+                  className="w-full rounded border bg-white px-1 py-2"
+                >
+                  <option value="">Pick a challenge</option>
+                  {board.map((c) => {
+                    // Lock: any locked one is taken. Replace: only another team's lock blocks it.
+                    const blocked =
+                      !!c.locked_by && (effect?.kind === "lockChallenge" || c.locked_by !== teamId);
+                    return (
+                      <option key={c.id} value={c.id} disabled={blocked}>
+                        {c.title}
+                        {c.locked_by ? ` (locked by ${c.locked_by === teamId ? "you" : teamName(c.locked_by)})` : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+              ))}
+            {effect?.kind === "discardDraw" &&
+              (others.length < discardCount ? (
+                <p>
+                  You need {discardCount} other card{discardCount === 1 ? "" : "s"} in your hand to discard.
+                </p>
+              ) : (
+                <fieldset className="space-y-1 text-xs">
+                  <legend className="mb-1">
+                    Discard {discardCount} ({picked.length} picked), then draw {effect.draw}:
+                  </legend>
+                  {others.map((c) => (
+                    <label key={c.id} className="flex items-start gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={picked.includes(c.id)}
+                        disabled={!picked.includes(c.id) && picked.length >= discardCount}
+                        onChange={(e) =>
+                          setPicked((p) => (e.target.checked ? [...p, c.id] : p.filter((id) => id !== c.id)))
+                        }
+                        className="mt-0.5"
+                      />
+                      <span>{typeOf(c)?.name}</span>
+                    </label>
+                  ))}
+                </fieldset>
+              ))}
             {needsTeam ? (
               otherTeams.length === 0 ? (
                 <p>There are no other active teams.</p>
@@ -279,7 +414,7 @@ function HandCard({
                   >
                     <option value="">Pick a team</option>
                     {otherTeams.map((t) => {
-                      const taken = isCurse && cursing.has(t.id);
+                      const taken = (isCurse || isCurseCopy) && cursing.has(t.id);
                       return (
                         <option key={t.id} value={t.id} disabled={taken}>
                           {t.name}
@@ -298,9 +433,9 @@ function HandCard({
                     {/* The range isn't always "near the target" (e.g. near a place, or the
                         team furthest from you), so confirm the card's own wording. */}
                     <span>
-                      {cardType.range_text ? (
+                      {rangeText ? (
                         <>
-                          Range condition met: <b>{cardType.range_text}</b>
+                          Range condition met: <b>{rangeText}</b>
                         </>
                       ) : (
                         "This card's range condition is met."
@@ -325,11 +460,7 @@ function HandCard({
             ) : (
               <p>
                 Use <b>{cardType.name}</b> now? It leaves your hand
-                {effect?.kind === "draw"
-                  ? `, and you get a new draw: ${effect.size} cards, keep ${effect.keep}.`
-                  : effect?.kind === "hand"
-                    ? `, and your hand limit goes up by ${effect.bonus} for the rest of the game.`
-                    : ", and your team carries out its effect."}
+                {effectNote(effect)}
               </p>
             )}
             <div className="flex flex-col gap-1.5">
@@ -343,7 +474,11 @@ function HandCard({
                       targetCardId: isDuplicateEffect ? target : undefined,
                       targetTeamId: needsTeam ? targetTeam : undefined,
                       inRange: needsTeam ? inRange : undefined,
+                      curseId: needsCurse ? curseId : undefined,
+                      challengeId: needsChallenge ? challengeId : undefined,
+                      cardIds: discardCount > 0 ? picked : undefined,
                     });
+                    setPicked([]);
                     // An empty target hand: a small note on the card instead of the big error.
                     const empty = r && !r.ok && r.message.match(/^(.*) has no cards to steal$/);
                     if (isSteal && empty) {
@@ -390,4 +525,26 @@ function HandCard({
       </CardView>
     </li>
   );
+}
+
+// The rest of "Use <card> now? It leaves your hand…".
+function effectNote(effect: ParsedEffect | null) {
+  switch (effect?.kind) {
+    case "draw":
+      return `, and you get a new draw: ${effect.size} cards, keep ${effect.keep}.`;
+    case "hand":
+      return `, and your hand limit goes up by ${effect.bonus} for the rest of the game.`;
+    case "reward":
+      return `, and your next completed challenge gives ×${effect.factor} the time bonus and card draws.`;
+    case "curseBoost":
+      return `, and you gain ${effect.factor}× as much from that curse until it is cleared.`;
+    case "replaceChallenge":
+      return ". The challenge goes back to the pool and a random one takes its place.";
+    case "lockChallenge":
+      return ". Only your team can complete that challenge until you do (one lock at a time).";
+    case "discardDraw":
+      return ".";
+    default:
+      return ", and your team carries out its effect.";
+  }
 }

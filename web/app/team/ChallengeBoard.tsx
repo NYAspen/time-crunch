@@ -27,6 +27,7 @@ export function ChallengeBoard({ teamId }: { teamId: string }) {
     .filter((c) => c.status === "claimed")
     .sort((a, b) => (b.claimed_at ?? "").localeCompare(a.claimed_at ?? ""));
   const teamName = (id: string | null) => teams.find((t) => t.id === id)?.name ?? "a team";
+  const multiplier = me?.reward_multiplier ?? 1;
 
   return (
     <section className="space-y-3">
@@ -35,6 +36,13 @@ export function ChallengeBoard({ teamId }: { teamId: string }) {
       {game.is_paused && (
         <p className="text-sm text-gray-600">The game is paused. Challenges can be completed again when it resumes.</p>
       )}
+      {multiplier > 1 && (
+        <SignBox tone="green" title={`Your next challenge is worth ×${multiplier}`}>
+          <p className="text-sm">
+            The next challenge you complete gives {multiplier}× the time bonus and {multiplier}× the card draws.
+          </p>
+        </SignBox>
+      )}
       {active.length === 0 && <p className="text-gray-500">No challenges on the board right now.</p>}
 
       <ul className="tc-stops space-y-2">
@@ -42,7 +50,14 @@ export function ChallengeBoard({ teamId }: { teamId: string }) {
           <ChallengeCard
             key={challenge.id}
             challenge={challenge}
-            canClaim={canClaim}
+            canClaim={canClaim && (!challenge.locked_by || challenge.locked_by === teamId)}
+            lockedBy={
+              challenge.locked_by
+                ? challenge.locked_by === teamId
+                  ? "your team"
+                  : teamName(challenge.locked_by)
+                : null
+            }
             onClaimed={(r) => {
               setResult(r);
               refreshAllLiveTables();
@@ -70,10 +85,12 @@ export function ChallengeBoard({ teamId }: { teamId: string }) {
 function ChallengeCard({
   challenge,
   canClaim,
+  lockedBy,
   onClaimed,
 }: {
   challenge: Challenge;
   canClaim: boolean;
+  lockedBy: string | null; // "lock challenge": only that team can complete it
   onClaimed: (result: ActionResult) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
@@ -89,6 +106,11 @@ function ChallengeCard({
   return (
     <li className="tc-challenge space-y-2 rounded-xl border bg-white p-4">
       <div className="text-lg font-semibold">{challenge.title}</div>
+      {lockedBy && (
+        <p className="inline-block border-2 border-gray-900 bg-yellow-300 px-2 py-0.5 text-xs font-bold tracking-wide uppercase">
+          🔒 Locked by {lockedBy}
+        </p>
+      )}
       <ChallengeLocation location={challenge.location} />
       {challenge.task && <p className="whitespace-pre-line text-gray-700">{challenge.task}</p>}
       <ChallengeRewards challenge={challenge} />

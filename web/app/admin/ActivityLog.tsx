@@ -40,7 +40,7 @@ function describe(entry: ActivityLogEntry, teamNames: Record<string, string>) {
     case "game_resumed":
       return "Game resumed";
     case "challenge_claimed":
-      return `${team} completed "${d.challenge}" (${formatDelta(Number(d.minutes) * 60000)}, ${drawLabel(Number(d.cards), Number(d.keep ?? 1))})`;
+      return `${team} completed "${d.challenge}" (${Number(d.multiplier ?? 1) > 1 ? `×${d.multiplier}: ` : ""}${formatDelta(Number(d.minutes) * 60000)}, ${Number(d.multiplier ?? 1) > 1 ? `${d.multiplier} × ` : ""}${drawLabel(Number(d.cards), Number(d.keep ?? 1))})`;
     case "claim_undone":
       return `Claim of "${d.challenge}" by ${team} undone${byAdmin}`;
     case "cards_drawn":
@@ -48,7 +48,11 @@ function describe(entry: ActivityLogEntry, teamNames: Record<string, string>) {
     case "card_kept":
       return `${team} kept ${d.card}`;
     case "card_used":
-      return `${team} used ${d.card}${d.target_team ? ` on ${d.target_team}` : ""}${d.target_card ? ` (copied ${d.target_card})` : ""}`;
+      return (
+        `${team} used ${d.card}${d.curse ? ` on the curse ${d.curse}` : ""}${d.target_team ? ` on ${d.target_team}` : ""}` +
+        `${d.target_card ? ` (copied ${d.target_card})` : ""}${d.challenge ? ` on "${d.challenge}"` : ""}` +
+        `${d.new_challenge ? ` (replaced by "${d.new_challenge}")` : ""}${d.discarded ? ` (discarded ${d.discarded})` : ""}`
+      );
     case "card_stolen":
       return `${team} stole ${d.stolen_card} from ${d.target_team} (${d.card})`;
     case "curse_vetoed":
@@ -56,7 +60,9 @@ function describe(entry: ActivityLogEntry, teamNames: Record<string, string>) {
     case "steal_vetoed":
       return `${team} vetoed ${d.attacker}'s steal and took back ${d.card}`;
     case "curse_started":
-      return `${team} cursed ${d.target_team} with ${d.card}`;
+      return d.curse
+        ? `${team} cursed ${d.target_team} with ${d.curse} too (${d.card})`
+        : `${team} cursed ${d.target_team} with ${d.card}`;
     case "card_discarded":
       return `${team} discarded ${d.card}`;
     case "curse_cleared":

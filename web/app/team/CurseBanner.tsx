@@ -126,7 +126,7 @@ export function CurseBanner({ teamId }: { teamId: string }) {
               <span>
                 Your curses <span className="font-normal">({byMe.length})</span>
               </span>
-              <SpeedTag>−{byMe.length}×</SpeedTag>
+              <SpeedTag>−{byMe.reduce((sum, c) => sum + c.attacker_gain, 0)}×</SpeedTag>
             </div>
           }
           bodyClassName="bg-white space-y-0! p-0!"
@@ -137,6 +137,9 @@ export function CurseBanner({ teamId }: { teamId: string }) {
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="min-w-0 font-bold break-words">
                     {c.card_name} <span className="font-normal text-gray-600">on</span> {name(c.target_team)}
+                    {c.attacker_gain > 1 && (
+                      <span className="ml-1 bg-orange-600 px-1 text-xs text-white">you gain {c.attacker_gain}×</span>
+                    )}
                   </span>
                   <span className="shrink-0 text-xs text-gray-500">since {clockTime(c.started_at)}</span>
                 </div>

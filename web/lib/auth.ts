@@ -22,7 +22,7 @@ export async function getCurrentTeam(): Promise<PublicTeam | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("teams")
-    .select("id, name, status, speed, eliminated_at, hand_bonus")
+    .select("id, name, status, speed, eliminated_at, hand_bonus, reward_multiplier")
     .eq("user_id", userId)
     .maybeSingle();
   return data;

@@ -183,6 +183,8 @@ function ChallengeRow({ challenge, onChanged }: { challenge: Challenge; onChange
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="font-extrabold">{challenge.title}</div>
+          {/* "lock challenge": only one team can complete it. Removing it from the board unlocks it. */}
+          {challenge.locked_by && <div className="text-xs font-bold uppercase">🔒 Locked by a team</div>}
           <ChallengeLocation location={challenge.location} />
           {challenge.task && <div className="text-sm text-gray-600">{challenge.task}</div>}
           <ChallengeRewards challenge={challenge} />

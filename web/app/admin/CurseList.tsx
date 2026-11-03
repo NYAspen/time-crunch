@@ -33,8 +33,8 @@ export function CurseList() {
       refreshAllLiveTables();
     });
 
-  // Each curse shifts speeds by 1, so a team's speed should be
-  // 1 + curses on it - curses it played. Offer a fix if it isn't.
+  // Each curse shifts speeds by 1 (the attacker by more if boosted), so a team's
+  // speed should be 1 + curses on it - what its curses take off. Offer a fix if it isn't.
   const speedInfo = (role: string, id: string) => {
     const actual = teams.find((t) => t.id === id)?.speed;
     const expected = curseSpeed(id, active);
@@ -65,7 +65,8 @@ export function CurseList() {
         {active.map((c) => (
           <li key={c.id} className="space-y-2 overflow-hidden border-2 border-red-600 bg-white p-3 pt-0 text-sm">
             <div className="-mx-3 bg-red-600 px-3 py-1.5 text-white">
-              <b>{name(c.attacker_team)}</b> → <b>{name(c.target_team)}</b>: {c.card_name}, since{" "}
+              <b>{name(c.attacker_team)}</b> → <b>{name(c.target_team)}</b>: {c.card_name}
+              {c.attacker_gain > 1 ? ` (boosted ×${c.attacker_gain})` : ""}, since{" "}
               {new Date(c.started_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
             </div>
             <div className="text-gray-600">
