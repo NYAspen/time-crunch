@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { LogoutButton } from "@/components/LogoutButton";
-import { PhaseTag } from "@/components/PhaseBanner";
+import { PausedBox, PhaseTag } from "@/components/PhaseBanner";
 import { getCurrentTeam } from "@/lib/auth";
 import { CurseBanner } from "./CurseBanner";
 import { StealAlert } from "./StealAlert";
@@ -35,6 +35,7 @@ async function TeamView() {
         </div>
         <PhaseTag />
       </header>
+      <PausedBox />
       <TeamClockPanel teamId={team.id} />
       <CurseBanner teamId={team.id} />
       <StealAlert teamId={team.id} />

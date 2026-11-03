@@ -65,7 +65,7 @@ export async function loadActivityLog(): Promise<ActivityLogEntry[]> {
 export async function loadChallenges(): Promise<Challenge[]> {
   const { data, error } = await createClient()
     .from("challenges")
-    .select("id, title, task, reward_cards, reward_minutes, status, activated_at, claimed_by, claimed_at")
+    .select("id, title, task, location, reward_cards, reward_keep, reward_minutes, status, activated_at, claimed_by, claimed_at")
     .order("created_at");
   if (error) throw new Error(error.message);
   return data;

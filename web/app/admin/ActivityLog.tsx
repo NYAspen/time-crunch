@@ -40,7 +40,7 @@ function describe(entry: ActivityLogEntry, teamNames: Record<string, string>) {
     case "game_resumed":
       return "Game resumed";
     case "challenge_claimed":
-      return `${team} completed "${d.challenge}" (${formatDelta(Number(d.minutes) * 60000)}, ${drawLabel(Number(d.cards))})`;
+      return `${team} completed "${d.challenge}" (${formatDelta(Number(d.minutes) * 60000)}, ${drawLabel(Number(d.cards), Number(d.keep ?? 1))})`;
     case "claim_undone":
       return `Claim of "${d.challenge}" by ${team} undone${byAdmin}`;
     case "cards_drawn":
@@ -61,6 +61,8 @@ function describe(entry: ActivityLogEntry, teamNames: Record<string, string>) {
       return `${team} discarded ${d.card}`;
     case "curse_cleared":
       return `${team} cleared the curse ${d.card}${byAdmin}`;
+    case "curse_ended":
+      return `Curse ${d.card} (${d.attacker} → ${d.target}) ended: ${team} eliminated`;
     case "curse_restarted":
       return `Curse ${d.card} on ${team} restarted${byAdmin}`;
     case "action_undone":

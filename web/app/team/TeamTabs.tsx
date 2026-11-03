@@ -17,6 +17,8 @@ type TabId = (typeof TABS)[number]["id"];
 
 // Tabs for the lower part of the team page. All panels stay mounted (just
 // hidden), so switching is instant and live updates keep arriving.
+// Challenges can only be completed in Preparation, so that tab goes away in
+// Elimination.
 export function TeamTabs({ teamId }: { teamId: string }) {
   const [tab, setTab] = useState<TabId>("challenges");
   const { data: draws } = useLiveTable("card_draws", loadCardDraws);
@@ -28,6 +30,9 @@ export function TeamTabs({ teamId }: { teamId: string }) {
   const handSize = cards?.filter((c) => c.holder_team === teamId && c.status === "hand").length ?? 0;
   const limit = game ? game.hand_limit + (teams?.find((t) => t.id === teamId)?.hand_bonus ?? 0) : 0;
   const overLimit = !!game && handSize > limit;
+  const elimination = game?.phase === "elimination";
+  const tabs = TABS.filter((t) => !(elimination && t.id === "challenges"));
+  const shown: TabId = elimination && tab === "challenges" ? "cards" : tab;
 
   return (
     <div className="space-y-3">
@@ -35,20 +40,20 @@ export function TeamTabs({ teamId }: { teamId: string }) {
         className="tc-tabs sticky z-10 -mx-4 flex gap-1 border-b bg-gray-50/95 px-4 py-2 backdrop-blur"
         style={{ top: "env(safe-area-inset-top, 0px)" }}
       >
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            aria-current={tab === t.id ? "page" : undefined}
+            aria-current={shown === t.id ? "page" : undefined}
             className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 font-semibold ${
-              tab === t.id ? "bg-gray-900 text-white" : "bg-white text-gray-700 border"
+              shown === t.id ? "bg-gray-900 text-white" : "bg-white text-gray-700 border"
             }`}
           >
             {t.label}
             {t.id === "cards" && game && (
               <span
                 className={`rounded-sm px-1.5 text-xs tabular-nums ${
-                  overLimit ? "bg-red-600 text-white" : tab === t.id ? "bg-white/20" : "bg-gray-200 text-gray-700"
+                  overLimit ? "bg-red-600 text-white" : shown === t.id ? "bg-white/20" : "bg-gray-200 text-gray-700"
                 }`}
               >
                 {handSize}/{limit}
@@ -61,13 +66,15 @@ export function TeamTabs({ teamId }: { teamId: string }) {
         ))}
       </nav>
 
-      <div hidden={tab !== "challenges"}>
-        <ChallengeBoard teamId={teamId} />
-      </div>
-      <div hidden={tab !== "cards"}>
+      {!elimination && (
+        <div hidden={shown !== "challenges"}>
+          <ChallengeBoard teamId={teamId} />
+        </div>
+      )}
+      <div hidden={shown !== "cards"}>
         <CardHand teamId={teamId} />
       </div>
-      <div hidden={tab !== "teams"}>
+      <div hidden={shown !== "teams"}>
         <TeamList highlightTeamId={teamId} />
         {/* Kept out of the way: only needed to check why your time changed. */}
         <details className="mt-6 text-sm text-gray-500">

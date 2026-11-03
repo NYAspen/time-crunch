@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { ChallengeRewards } from "@/components/ChallengeRewards";
+import { ChallengeLocation, ChallengeRewards } from "@/components/ChallengeRewards";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { DeleteAllButton } from "@/components/DeleteAllButton";
 import { refreshAllLiveTables, useLiveTable, withRefresh } from "@/components/useLiveTable";
@@ -18,7 +18,8 @@ import {
 import { Notice } from "@/components/Notice";
 import { SignBox } from "@/components/SignBox";
 
-const EXAMPLE = "title\ttask\treward_cards\treward_minutes\nBean selfie\tTeam photo reflected in Cloud Gate\t2\t15";
+const EXAMPLE =
+  "title\ttask\tlocation\treward_cards\treward_keep\treward_minutes\nBean selfie\tTeam photo reflected in Cloud Gate\tMillennium Park\t4\t2\t15";
 
 export function ChallengeManager() {
   const { data: challenges, error } = useLiveTable("challenges", loadChallenges);
@@ -74,8 +75,10 @@ export function ChallengeManager() {
         <form action={importAction} className="mt-2 space-y-2">
           <p className="text-sm text-gray-600">
             In Google Sheets, select the header row plus the challenge rows, copy, and paste here. Columns:{" "}
-            <code>title, task, reward_cards, reward_minutes</code>. New challenges go into the pool, and the board fills
-            from it at random.
+            <code>title, task, location, reward_cards, reward_keep, reward_minutes</code>. <code>location</code> and{" "}
+            <code>reward_keep</code> can be left out (anywhere / keep 1). For &quot;draw 4 pick 2&quot;, put 4 in
+            reward_cards and 2 in reward_keep. New challenges go into the pool, and the board fills from it at
+            random.
           </p>
           <textarea
             name="table"
@@ -180,6 +183,7 @@ function ChallengeRow({ challenge, onChanged }: { challenge: Challenge; onChange
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="font-extrabold">{challenge.title}</div>
+          <ChallengeLocation location={challenge.location} />
           {challenge.task && <div className="text-sm text-gray-600">{challenge.task}</div>}
           <ChallengeRewards challenge={challenge} />
         </div>
@@ -199,6 +203,12 @@ function ChallengeRow({ challenge, onChanged }: { challenge: Challenge; onChange
               className="w-full rounded border p-2"
             />
             <textarea name="task" defaultValue={challenge.task} rows={3} className="w-full rounded border p-2" />
+            <input
+              name="location"
+              defaultValue={challenge.location}
+              placeholder="Location (blank = anywhere)"
+              className="w-full rounded border p-2"
+            />
             <div className="flex gap-2">
               <label className="flex-1 text-sm">
                 Cards to draw
@@ -208,6 +218,17 @@ function ChallengeRow({ challenge, onChanged }: { challenge: Challenge; onChange
                   min={0}
                   max={10}
                   defaultValue={challenge.reward_cards}
+                  className="w-full rounded border p-2"
+                />
+              </label>
+              <label className="flex-1 text-sm">
+                Cards kept
+                <input
+                  name="reward_keep"
+                  type="number"
+                  min={1}
+                  max={10}
+                  defaultValue={challenge.reward_keep}
                   className="w-full rounded border p-2"
                 />
               </label>

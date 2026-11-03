@@ -1,8 +1,10 @@
 import type { Challenge } from "@/lib/types";
 
-// "draw 3 pick 1"; a single card goes straight into the hand, so it's just "draw 1 card".
+// "draw 3 pick 1". When every card shown is kept it goes straight into the
+// hand, so it's just "draw 1 card" / "draw 2 cards".
 export function drawLabel(cards: number, keep = 1) {
-  return cards === 1 ? "draw 1 card" : `draw ${cards} pick ${keep}`;
+  if (keep >= cards) return cards === 1 ? "draw 1 card" : `draw ${cards} cards`;
+  return `draw ${cards} pick ${keep}`;
 }
 
 // A sign-style tag: a coloured icon block on the left, then the label (like a
@@ -30,7 +32,16 @@ const CardsIcon = (
   </svg>
 );
 
-export function ChallengeRewards({ challenge }: { challenge: Pick<Challenge, "reward_cards" | "reward_minutes"> }) {
+// Where the challenge has to be done; a blank location means anywhere.
+export function ChallengeLocation({ location }: { location: string }) {
+  return (
+    <p className="text-sm">
+      <span className="tc-label text-gray-500">Location:</span> {location || "Anywhere"}
+    </p>
+  );
+}
+
+export function ChallengeRewards({ challenge }: { challenge: Pick<Challenge, "reward_cards" | "reward_keep" | "reward_minutes"> }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {challenge.reward_minutes > 0 && (
@@ -40,7 +51,7 @@ export function ChallengeRewards({ challenge }: { challenge: Pick<Challenge, "re
       )}
       {challenge.reward_cards > 0 && (
         <RewardTag icon={CardsIcon} iconClass="bg-purple-600 text-white">
-          {drawLabel(challenge.reward_cards)}
+          {drawLabel(challenge.reward_cards, challenge.reward_keep)}
         </RewardTag>
       )}
     </div>

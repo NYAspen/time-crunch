@@ -82,12 +82,25 @@ export async function undoActivity(entryId: number): Promise<ActionResult> {
 // Challenges
 // ---------------------------------------------------------------------------
 
-type ChallengeFields = { title: string; task: string; reward_cards: number; reward_minutes: number };
+type ChallengeFields = {
+  title: string;
+  task: string;
+  location: string;
+  reward_cards: number;
+  reward_keep: number;
+  reward_minutes: number;
+};
 
 function validateChallenge(c: ChallengeFields): string | null {
   if (c.title.length < 1 || c.title.length > 100) return "Title must be 1–100 characters.";
   if (!Number.isInteger(c.reward_cards) || c.reward_cards < 0 || c.reward_cards > 10) {
     return "Card reward must be a whole number from 0 to 10.";
+  }
+  if (!Number.isInteger(c.reward_keep) || c.reward_keep < 1 || c.reward_keep > 10) {
+    return "Cards kept (reward_keep) must be a whole number from 1 to 10.";
+  }
+  if (c.reward_cards > 0 && c.reward_keep > c.reward_cards) {
+    return "Cards kept can't be more than cards drawn.";
   }
   if (!Number.isInteger(c.reward_minutes) || c.reward_minutes < 0 || c.reward_minutes > 600) {
     return "Time bonus must be a whole number of minutes from 0 to 600.";
@@ -96,13 +109,14 @@ function validateChallenge(c: ChallengeFields): string | null {
 }
 
 // Expects rows pasted from a spreadsheet with headers:
-// title, task, reward_cards, reward_minutes
+// title, task, location, reward_cards, reward_keep, reward_minutes
+// (location and reward_keep are optional: blank = anywhere / keep 1)
 export async function importChallenges(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const rows = parseTable(String(formData.get("table") ?? ""));
   if (rows.length === 0) {
     return {
       ok: false,
-      message: "Paste a header row (title, task, reward_cards, reward_minutes) and at least one challenge.",
+      message: "Paste a header row (title, task, location, reward_cards, reward_keep, reward_minutes) and at least one challenge.",
     };
   }
   if (!("title" in rows[0])) {
@@ -114,7 +128,9 @@ export async function importChallenges(_prev: ActionResult, formData: FormData):
     const challenge = {
       title: row.title ?? "",
       task: row.task ?? "",
+      location: row.location ?? "",
       reward_cards: Number(row.reward_cards || 0),
+      reward_keep: Number(row.reward_keep || 1),
       reward_minutes: Number(row.reward_minutes || 0),
     };
     const problem = validateChallenge(challenge);
@@ -133,7 +149,9 @@ export async function updateChallenge(challengeId: string, formData: FormData): 
   const challenge = {
     title: String(formData.get("title") ?? "").trim(),
     task: String(formData.get("task") ?? "").trim(),
+    location: String(formData.get("location") ?? "").trim(),
     reward_cards: Number(formData.get("reward_cards")),
+    reward_keep: Number(formData.get("reward_keep")),
     reward_minutes: Number(formData.get("reward_minutes")),
   };
   const problem = validateChallenge(challenge);
@@ -144,7 +162,9 @@ export async function updateChallenge(challengeId: string, formData: FormData): 
     p_challenge: challengeId,
     p_title: challenge.title,
     p_task: challenge.task,
+    p_location: challenge.location,
     p_reward_cards: challenge.reward_cards,
+    p_reward_keep: challenge.reward_keep,
     p_reward_minutes: challenge.reward_minutes,
   });
   if (error) return { ok: false, message: error.message };

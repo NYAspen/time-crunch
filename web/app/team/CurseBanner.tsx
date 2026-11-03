@@ -10,8 +10,6 @@ import { useHasVeto } from "./StealAlert";
 import { Notice } from "@/components/Notice";
 import { SignBox } from "@/components/SignBox";
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-
 // Shows curses on/by this team. Playing and clearing a curse shifts both teams'
 // speeds by 1 automatically; if the speed was changed by hand since, a button
 // offers to put it back to what the curses add up to.
@@ -40,97 +38,90 @@ export function CurseBanner({ teamId }: { teamId: string }) {
       refreshAllLiveTables();
     });
 
+  // Only shown when a speed was changed by hand since: the countdown already
+  // shows the current speed.
   const expected = curseSpeed(teamId, curses.filter((c) => c.status === "active"));
-  const speedStatus =
-    me.speed === expected ? (
-      <p className="text-sm font-semibold">
-        Your countdown is running at {expected}×{expected < 0 ? " (going up)" : ""}.
-      </p>
-    ) : (
-      <button
-        disabled={pending}
-        onClick={() => run(syncMySpeed)}
-        className="w-full rounded-lg bg-gray-900 p-3 font-bold text-white disabled:opacity-50"
-      >
-        Your countdown is at {me.speed}×. Set it back to {expected}×
-      </button>
-    );
+  const speedFix = me.speed !== expected && (
+    <button
+      disabled={pending}
+      onClick={() => run(syncMySpeed)}
+      className="w-full rounded-lg bg-gray-900 p-2 text-sm font-bold text-white disabled:opacity-50"
+    >
+      Your countdown is at {me.speed}×. Set it back to {expected}×
+    </button>
+  );
 
+  // Kept short: just the curse and the team, plus what the cursed team needs
+  // to clear it.
   return (
     <section className="space-y-2">
       <Notice result={result} />
 
       {onMe && (
-        <SignBox tone="red" title="! You are cursed">
-          <p>
-            <b>{name(onMe.attacker_team)}</b> played <b>{onMe.card_name}</b> on you at {time(onMe.started_at)}.
-          </p>
+        <SignBox
+          tone="red"
+          compact
+          title={
+            <>
+              ! Cursed: {onMe.card_name} <span className="font-normal">by {name(onMe.attacker_team)}</span>
+            </>
+          }
+        >
           {onMe.clearance && (
             <p>
-              <b>To clear it:</b> {onMe.clearance}
+              <b>To clear:</b> {onMe.clearance}
             </p>
           )}
-          <p className="text-sm">Your countdown runs 1× faster until you clear it.</p>
-          {confirm === "clear" ? (
+          {confirm ? (
             <div className="flex gap-2">
               <button
                 disabled={pending}
-                onClick={() => run(() => clearCurse(onMe.id))}
-                className="flex-1 rounded-lg bg-green-600 p-3 font-semibold text-white disabled:opacity-50"
+                onClick={() => run(() => (confirm === "clear" ? clearCurse(onMe.id) : vetoCurse(onMe.id)))}
+                className={`flex-1 rounded-lg p-2 font-semibold text-white disabled:opacity-50 ${
+                  confirm === "clear" ? "bg-green-600" : "bg-red-600"
+                }`}
               >
-                Yes, we did it
+                {confirm === "clear" ? "Yes, we did it" : "Yes, use Veto"}
               </button>
-              <button onClick={() => setConfirm(null)} className="flex-1 rounded-lg border bg-white p-3">
+              <button onClick={() => setConfirm(null)} className="flex-1 rounded-lg border bg-white p-2">
                 Cancel
               </button>
             </div>
-          ) : confirm === "veto" ? (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Use your Veto card to cancel this curse?</p>
-              <div className="flex gap-2">
-                <button
-                  disabled={pending}
-                  onClick={() => run(() => vetoCurse(onMe.id))}
-                  className="flex-1 rounded-lg bg-red-600 p-3 font-semibold text-white disabled:opacity-50"
-                >
-                  Yes, veto it
-                </button>
-                <button onClick={() => setConfirm(null)} className="flex-1 rounded-lg border bg-white p-3">
-                  Cancel
-                </button>
-              </div>
-            </div>
           ) : (
-            <>
+            <div className="flex gap-2">
               <button
                 onClick={() => setConfirm("clear")}
-                className="w-full rounded-lg border-2 border-green-600 bg-white p-3 font-semibold text-green-700"
+                className="flex-1 rounded-lg border-2 border-green-600 bg-white p-2 font-semibold text-green-700"
               >
-                We completed the task: curse cleared
+                Task done
               </button>
               {hasVeto && (
                 <button
                   onClick={() => setConfirm("veto")}
-                  className="w-full rounded-lg border-2 border-red-600 bg-white p-3 font-semibold text-red-700"
+                  className="flex-1 rounded-lg border-2 border-red-600 bg-white p-2 font-semibold text-red-700"
                 >
-                  Use Veto to cancel this curse
+                  Veto
                 </button>
               )}
-            </>
+            </div>
           )}
         </SignBox>
       )}
 
       {byMe.map((c) => (
-        <SignBox key={c.id} tone="orange" title="Your curse is active">
-          <p>
-            Your curse <b>{c.card_name}</b> on <b>{name(c.target_team)}</b> is active (since {time(c.started_at)}). Your
-            clock runs 1× slower until they clear it.
-          </p>
-        </SignBox>
+        <SignBox
+          key={c.id}
+          tone="orange"
+          compact
+          title={
+            <>
+              Your curse: {c.card_name} <span className="font-normal">on {name(c.target_team)}</span>
+            </>
+          }
+        />
       ))}
 
-      {(onMe || byMe.length > 0) && speedStatus}
+      {speedFix}
     </section>
   );
 }

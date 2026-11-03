@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ChallengeRewards } from "@/components/ChallengeRewards";
+import { ChallengeLocation, ChallengeRewards } from "@/components/ChallengeRewards";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadChallenges, loadGameState, loadTeams } from "@/lib/queries";
 import type { ActionResult, Challenge } from "@/lib/types";
@@ -89,6 +89,7 @@ function ChallengeCard({
   return (
     <li className="tc-challenge space-y-2 rounded-xl border bg-white p-4">
       <div className="text-lg font-semibold">{challenge.title}</div>
+      <ChallengeLocation location={challenge.location} />
       {challenge.task && <p className="whitespace-pre-line text-gray-700">{challenge.task}</p>}
       <ChallengeRewards challenge={challenge} />
 

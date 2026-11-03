@@ -145,11 +145,14 @@ Keep the content in a Google Sheet and paste it into the admin page. Example fil
 |---|---|
 | `title` | Short name shown on the board |
 | `task` | What the team has to do |
-| `reward_cards` | How many cards the team draws (it keeps 1). Use 0 for none. |
+| `location` | Optional. Where it has to be done, shown as "Location: …" on the challenge. Blank shows "Anywhere". |
+| `reward_cards` | How many cards the team draws. Use 0 for none. |
+| `reward_keep` | Optional. How many of those cards it keeps (default 1). `reward_cards` 4 + `reward_keep` 2 = "draw 4 pick 2". |
 | `reward_minutes` | Time bonus in minutes, added straight away. Use 0 for none. |
 
 - Imported challenges go into a hidden **pool**. The board shows a set number at a time (10 by default; change it under "Challenges on board").
 - When a challenge is claimed, a random one from the pool replaces it.
+- Challenges can only be completed during Preparation. The board disappears from the team page once Elimination starts.
 
 ### Cards: Admin → Cards → Import cards
 | Column | Meaning |
@@ -158,13 +161,13 @@ Keep the content in a Google Sheet and paste it into the admin page. Example fil
 | `type` | `curse` or `powerup` |
 | `copies` | How many physical copies are in the deck |
 | `description` | What the card does |
-| `range` | e.g. `500 m`. Shown on curses; players confirm they're within range. |
+| `range` | e.g. `500 m`, `within 1 km of the Bean`, `the team furthest from you`. Shown on the card; players tick "Range condition met" before playing it. |
 | `clearance` | The task the cursed team must do to clear the curse |
 | `effect` | Blank for cards the players carry out themselves, or one of the automatic effects below |
 
 **Automatic effects:**
 - `duplicate`: copy another card in your hand.
-- `steal`: take a random card from another team's hand. Elimination only; the team confirms it is within range.
+- `steal`: take a random card from another team's hand. Works in either phase; the team confirms the range condition is met.
 - `veto`: stays in the hand. Cancels a curse on your team, or takes back a card stolen from you within 60 seconds.
 - `draw 4 pick 2`: a new draw (up to 10 cards shown; keep no more than are shown).
 - `hand +1`: the team's hand limit goes up by 1 (up to +9 per card) for the rest of the game.

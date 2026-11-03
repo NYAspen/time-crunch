@@ -30,10 +30,10 @@ export async function claimChallenge(challengeId: string): Promise<ActionResult>
   const { data, error } = await supabase.rpc("claim_challenge", { p_challenge: challengeId });
   if (error) return { ok: false, message: error.message };
 
-  const { title, minutes, cards } = data as { title: string; minutes: number; cards: number };
+  const { title, minutes, cards, keep } = data as { title: string; minutes: number; cards: number; keep?: number };
   const rewards = [
     minutes > 0 ? `+${minutes} min` : null,
-    cards > 0 ? `${drawLabel(cards)} (open the Cards tab to draw)` : null,
+    cards > 0 ? `${drawLabel(cards, keep)} (open the Cards tab to draw)` : null,
   ].filter(Boolean);
   return { ok: true, message: `You completed "${title}"!${rewards.length ? ` ${rewards.join(", ")}.` : ""}` };
 }

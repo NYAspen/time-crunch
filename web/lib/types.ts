@@ -65,7 +65,9 @@ export type Challenge = {
   id: string;
   title: string;
   task: string;
+  location: string; // where it can be done; blank = anywhere
   reward_cards: number;
+  reward_keep: number; // cards kept from the draw ("draw 4 pick 2")
   reward_minutes: number;
   // Teams only ever receive "active" and "claimed" (RLS); admins see all.
   status: "pool" | "active" | "claimed" | "retired";

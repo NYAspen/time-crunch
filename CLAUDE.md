@@ -70,14 +70,14 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 | D2 | Pause, used for lunch or emergencies, freezes every countdown and curse effect, and blocks team actions. No time is charged for paused time. | |
 | D3 | A team at zero during Elimination is marked eliminated once and can no longer act. It can still view the board. | |
 | D4 | The board shows **10** active challenges, adjustable by the admin from 1 to 50. Replacements are picked **at random** from the unused pool. | Confirmed. |
-| D5 | Teams self-report claims with no admin approval, and the first claim wins. Teams can claim in either phase and several in a row, but not while the game is paused or after they've been eliminated. The time bonus is added immediately, and a card draw is queued. | |
-| D6 | A challenge reward is "draw N": the team taps Draw, sees N random cards, and keeps 1. The rest go back into the deck. If the deck has fewer than N cards, the team sees what's left. When only one card is revealed, it goes straight into the hand with no choice step. | Confirmed. Each claim queues a draw; a draw stays open across refreshes. |
+| D5 | Teams self-report claims with no admin approval, and the first claim wins. Teams can claim several in a row, **only during Preparation**, and not while the game is paused or after they've been eliminated. The board is hidden from teams in Elimination. The time bonus is added immediately, and a card draw is queued. | Preparation-only from 2026-11-03 (migration 0016). |
+| D6 | A challenge reward is "draw N pick K" (K defaults to 1): the team taps Draw, sees N random cards, and keeps K. The rest go back into the deck. If the deck has fewer than N cards, the team sees what's left. When only one card is revealed, it goes straight into the hand with no choice step. | Confirmed. Each claim queues a draw; a draw stays open across refreshes. |
 | D7 | Card types for now are **curse** and **power-up** (the card list is still being planned). Time cards aren't included, because challenges give time bonuses directly. | New types or effects can be added later with a small database change. |
 | D8 | **Hand limit: 5 cards by default**; the admin can set 1–50 (Admin → Cards). Offered cards don't count. A team over the limit can't draw or use cards until it discards down to the limit; claims still work. | Added 2026-10-23 (migration 0012). |
 | D9 | Each active curse adds **+1×** to the victim's speed and **−1×** to the attacker's (from 1×: victim 2×, attacker 0×). Curses stack, so a team can curse and be cursed at once. A team cursing two teams runs at −1×, so its clock goes up. | Changed from fixed speeds on 2026-10-23 (migration 0011). |
 | D10 | A team can have at most one active curse at a time. | |
-| D11 | Curses can only be **played** during Elimination (blocked in Preparation, checked by the server). No curse effects apply while paused. | Play-blocking added 2026-10-23 (migration 0011). |
-| D12 | Range is honor-system in Tier 1: the attacker confirms "we are within range" when playing the card. | Automatic checking is Tier 2. |
+| D11 | Curses can only be **played** during Elimination (blocked in Preparation, checked by the server). Steals work in either phase. No curse effects apply while paused. When a team is eliminated, every curse it played or suffers ends automatically and the other team's speed shifts back. | Play-blocking added 2026-10-23 (migration 0011). Steals in Preparation and curses ending at elimination from 2026-11-03 (migration 0016). |
+| D12 | Range is honor-system in Tier 1: the attacker ticks "Range condition met: <the card's range text>" when playing the card. A range need not be "near the target" (e.g. near a place, or the team furthest from you). | Automatic checking is Tier 2. |
 | D13 | Teams can set their countdown speed by hand to **0×, 1× or 2×**. 1× is normal, 0× stops the clock, and 2× drains double. Curses shift speeds by 1 (D9), so the actual speed can be anywhere from −20× to 20×; below 0 the clock goes up. Speed only has an effect during Elimination when the game isn't paused. Manual changes are for fixing mistakes. | Every change is logged, and every team's speed is shown publicly. |
 
 ## 4. Requirements by tier
@@ -205,7 +205,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 **Content:**
 - Challenges and cards are CSV files in `content/`, editable in Google Sheets or Excel.
 - They are loaded through an admin Import screen.
-- **Challenges** (`content/challenges-example.csv`) have the columns `title, task, reward_cards, reward_minutes`. Copy the rows from Google Sheets, headers included, into Admin → Challenges → Import. Imported challenges go into the hidden pool, and the board fills from it at random.
+- **Challenges** (`content/challenges-example.csv`) have the columns `title, task, location, reward_cards, reward_keep, reward_minutes`. `location` (blank = anywhere) and `reward_keep` (default 1) are optional. Copy the rows from Google Sheets, headers included, into Admin → Challenges → Import. Imported challenges go into the hidden pool, and the board fills from it at random.
 - **Cards** (`content/cards-example.csv`) have the columns `name, type, copies, description, range, clearance, effect`. `type` is `curse` or `powerup`; `effect` is blank (manual), `duplicate`, `steal`, `veto`, `draw X pick Y` or `hand +N`. Import them in Admin → Cards → Import cards.
 
 **Fresh test game:** the admin-only "Reset game" (type RESET to confirm) works like this:
@@ -426,6 +426,18 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - **Consistency rules:** anything needing attention (curses, steals, confirmations, warnings, admin notes, draws) uses `components/SignBox.tsx` (coloured heading bar + white panel; red / orange / purple / yellow / green / black). The home and login pages start with `components/PageSign.tsx` (black station-name sign with a Purple Line bar). No pale tinted or rounded boxes.
   - Mobile defaults in `app/globals.css`: text boxes and dropdowns always 16px (stops iPhone zoom), buttons and dropdowns at least 36px tall, roomier fold-out headings, 20px checkboxes. Checked at 360px and 390px wide: no sideways scrolling on any page.
 
+- **Rule and UI changes** (migration `0016_rules_nov3.sql`, 2026-11-03; **not yet run**, run after 0015):
+  - Challenges have a `location` (shown as "Location: …", blank = "Anywhere") and `reward_keep` ("draw 4 pick 2"). Import and admin edit include both.
+  - Challenges can only be completed in Preparation (`claim_challenge` checks it); the team Challenges tab disappears in Elimination.
+  - Steals can be played in either phase; curses stay Elimination only.
+  - `_end_curses_for(team)`: when a team is eliminated (time ran out or by the admin), its curses end (`cleared_by = 'eliminated'`, activity `curse_ended`) and both speeds shift back. Bringing the team back doesn't restart them. The migration also ends any such curses already active.
+  - Range confirmation reads "Range condition met: <range text>".
+  - Curse boxes on the team page are compact: "Cursed: <card> by <team>" (with To clear, Task done and Veto) and "Your curse: <card> on <team>". The speed line only shows when a speed doesn't match the curses.
+  - Undo bars closed with × stay closed after a reload (remembered in the phone's browser storage).
+  - An eliminated team keeps its cards, but its Cards tab shows an "eliminated" sign and no Draw/Keep/Use/Discard (the database already refuses them via `_acting_team`). The admin can still Move its cards.
+  - A steal on a team with no cards shows a small "Steal failed" note on the steal card; the card stays in the hand.
+  - The team page shows the same big yellow "Game paused" box as the admin page (`PausedBox` in `components/PhaseBanner.tsx`) instead of a small badge.
+
 ### Outstanding
 - Full-loop test on several phones.
 - Stages 2–5 (Tier 1) by Nov 1. Then the playtest, Tier 2 if there is time, and the rehearsal (section 2).
@@ -507,4 +519,5 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - 2026-11-02: **Power-ups** (migration 0015): Veto cancels a curse on you (any time while active) or takes back a stolen card within 60 s. Steal works like a curse: Elimination only, with a range confirmation. Hand +N lasts the rest of the game.
 - 2026-11-02: **Wording:** teams tap **Completed** instead of Claim, and card rewards read "draw N pick 1" (or "draw 1 card"). This is a text change only; the database still calls it a claim, and server messages (errors, the Undo bar) still say "claim".
 - 2026-11-02: **Discard only shows when a hand is over the limit** (team Cards tab). Otherwise cards can only be used. The database still allows discarding at any time, and the admin can still move cards back to the deck.
+- 2026-11-03: **Challenges are Preparation only** (board hidden in Elimination); **steals allowed in Preparation**; **an eliminated team's curses end** (no time transfer after elimination; the few seconds between hitting zero and the server noticing are not refunded). Challenges get a location and "draw N pick K" rewards (migration 0016).
 - 2026-10-23: **Curses can't be played during Preparation**, only during Elimination (D11). Teams can still draw and hold them in the morning.

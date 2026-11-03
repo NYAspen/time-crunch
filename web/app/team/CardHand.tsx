@@ -29,9 +29,10 @@ export function CardHand({ teamId }: { teamId: string }) {
   const offered = openDrawRow ? mine.filter((c) => c.status === "offered" && c.draw_id === openDrawRow.id) : [];
   const waiting = draws.filter((d) => d.team_id === teamId && d.status === "pending");
   const otherTeams = teams.filter((t) => t.id !== teamId && t.status === "active");
-  // Curses and steals can only be played during Elimination (checked in the database too).
+  // Curses can only be played during Elimination (checked in the database too).
+  // Steals work in either phase.
   const attacksAllowed = game.phase === "elimination";
-  const isAttack = (t: CardType) => t.type === "curse" || t.effect === "steal";
+  const isAttack = (t: CardType) => t.type === "curse";
   const holdsAttack = hand.some((c) => {
     const t = typeOf(c);
     return !!t && isAttack(t);
@@ -41,6 +42,9 @@ export function CardHand({ teamId }: { teamId: string }) {
   const limit = game.hand_limit + (teams.find((t) => t.id === teamId)?.hand_bonus ?? 0);
   const excess = Math.max(hand.length - limit, 0);
   const picksLeft = openDrawRow ? openDrawRow.keep - openDrawRow.kept : 0;
+  // An eliminated team keeps its cards but can't draw, use or discard them
+  // (checked in the database too); the admin can still move them.
+  const eliminated = teams.find((t) => t.id === teamId)?.status !== "active";
 
   const run = (action: () => Promise<ActionResult>) =>
     startTransition(async () => {
@@ -54,7 +58,9 @@ export function CardHand({ teamId }: { teamId: string }) {
 
       <HandMeter count={hand.length} limit={limit} />
 
-      {openDrawRow ? (
+      {eliminated ? (
+        <SignBox tone="black" title="Your team has been eliminated" />
+      ) : openDrawRow ? (
         <SignBox
           tone="purple"
           bodyClassName="bg-gray-100"
@@ -97,7 +103,7 @@ export function CardHand({ teamId }: { teamId: string }) {
         )
       )}
 
-      {excess > 0 && (
+      {excess > 0 && !eliminated && (
         <SignBox tone="red" title="! Your hand is over the limit">
           <p className="text-sm">
             You hold {hand.length} cards and the limit is {limit}. Tap <b>Discard</b> on {excess} card
@@ -106,12 +112,12 @@ export function CardHand({ teamId }: { teamId: string }) {
         </SignBox>
       )}
 
-      {game.is_paused ? (
+      {eliminated ? null : game.is_paused ? (
         <p className="text-sm text-gray-600">The game is paused. Cards can be used again when it resumes.</p>
       ) : (
         !attacksAllowed &&
         holdsAttack && (
-          <p className="text-sm text-gray-600">Curses and steal cards can be played once Elimination starts.</p>
+          <p className="text-sm text-gray-600">Curses can be played once Elimination starts.</p>
         )
       )}
 
@@ -128,8 +134,8 @@ export function CardHand({ teamId }: { teamId: string }) {
                 cardType={t}
                 hand={hand}
                 otherTeams={otherTeams}
-                canUse={!game.is_paused && excess === 0 && (attacksAllowed || !isAttack(t))}
-                canDiscard={excess > 0}
+                canUse={!eliminated && !game.is_paused && excess === 0 && (attacksAllowed || !isAttack(t))}
+                canDiscard={!eliminated && excess > 0}
                 typeOf={typeOf}
                 pending={pending}
                 run={run}
@@ -193,7 +199,7 @@ function HandCard({
   cardType: CardType;
   hand: Card[];
   otherTeams: PublicTeam[];
-  canUse: boolean; // not while paused or over the hand limit; curses and steals only in Elimination (all checked in the database too)
+  canUse: boolean; // not while paused or over the hand limit; curses only in Elimination (all checked in the database too)
   canDiscard: boolean; // Discard only shows while the hand is over the limit
   typeOf: (card: Card) => CardType | undefined;
   pending: boolean;
@@ -203,6 +209,7 @@ function HandCard({
   const [target, setTarget] = useState(""); // duplicate: card to copy
   const [targetTeam, setTargetTeam] = useState(""); // curse / steal: the other team
   const [inRange, setInRange] = useState(false);
+  const [stealFailed, setStealFailed] = useState<ActionResult>(null); // shown on this card
   const others = hand.filter((c) => c.id !== card.id);
   const isCurse = cardType.type === "curse";
   const effect = isCurse ? null : parseEffect(cardType.effect);
@@ -219,6 +226,11 @@ function HandCard({
       <CardView cardType={cardType} isDuplicate={card.is_duplicate} compact>
         {mode === "idle" && (
           <div className="flex flex-col items-start gap-2 pt-1">
+            {stealFailed && (
+              <div className="w-full">
+                <Notice compact result={stealFailed} />
+              </div>
+            )}
             {isVeto ? (
               // Veto is never played from here: a Veto button appears when the team
               // is cursed or has a card stolen.
@@ -271,7 +283,17 @@ function HandCard({
                       onChange={(e) => setInRange(e.target.checked)}
                       className="mt-0.5"
                     />
-                    <span>We are within range of this team{cardType.range_text ? ` (${cardType.range_text})` : ""}.</span>
+                    {/* The range isn't always "near the target" (e.g. near a place, or the
+                        team furthest from you), so confirm the card's own wording. */}
+                    <span>
+                      {cardType.range_text ? (
+                        <>
+                          Range condition met: <b>{cardType.range_text}</b>
+                        </>
+                      ) : (
+                        "This card's range condition is met."
+                      )}
+                    </span>
                   </label>
                 </>
               )
@@ -303,13 +325,24 @@ function HandCard({
                 disabled={pending || !ready}
                 onClick={() => {
                   setMode("idle");
-                  run(() =>
-                    playCard(card.id, {
+                  setStealFailed(null);
+                  run(async () => {
+                    const r = await playCard(card.id, {
                       targetCardId: isDuplicateEffect ? target : undefined,
                       targetTeamId: needsTeam ? targetTeam : undefined,
                       inRange: needsTeam ? inRange : undefined,
-                    }),
-                  );
+                    });
+                    // An empty target hand: a small note on the card instead of the big error.
+                    const empty = r && !r.ok && r.message.match(/^(.*) has no cards to steal$/);
+                    if (isSteal && empty) {
+                      setStealFailed({
+                        ok: false,
+                        message: `Steal failed: ${empty[1]} has no cards. Your card is still in your hand.`,
+                      });
+                      return null;
+                    }
+                    return r;
+                  });
                 }}
                 className="rounded-lg bg-gray-900 p-2 font-semibold text-white disabled:opacity-40"
               >
