@@ -206,6 +206,29 @@ const checks = [
     const { error } = await supabase.rpc("use_card", { p_card: "00000000-0000-0000-0000-000000000000", p_target: null });
     return !!error;
   }],
+  // Power-ups (0015)
+  ["See steals between other teams", async () => {
+    const { data, error } = await supabase
+      .from("steals")
+      .select("id")
+      .neq("attacker_team", team.id)
+      .neq("target_team", team.id);
+    return !!error || data.length === 0;
+  }],
+  ["Record a steal directly (without a card)", async () => {
+    const { error } = await supabase
+      .from("steals")
+      .insert({ attacker_team: team.id, target_team: team.id, card_name: "hack", veto_until: new Date().toISOString() });
+    return !!error;
+  }],
+  ["Raise its own hand limit directly", async () => {
+    const { data, error } = await supabase.from("teams").update({ hand_bonus: 50 }).eq("id", team.id).select();
+    return !!error || data.length === 0;
+  }],
+  ["Veto a steal that wasn't from it", async () => {
+    const { error } = await supabase.rpc("veto_steal", { p_steal: "00000000-0000-0000-0000-000000000000" });
+    return !!error;
+  }],
 ];
 
 let failures = 0;

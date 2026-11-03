@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { CardView } from "@/components/CardView";
+import { drawLabel } from "@/components/ChallengeRewards";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { DeleteAllButton } from "@/components/DeleteAllButton";
 import { refreshAllLiveTables, useLiveTable, withRefresh } from "@/components/useLiveTable";
@@ -75,8 +76,11 @@ export function CardManager() {
           <p className="text-sm text-gray-600">
             Paste rows from Google Sheets, header row included. Columns:{" "}
             <code>name, type, copies, description, range, clearance, effect</code>. Type is <code>curse</code> or{" "}
-            <code>powerup</code>. Leave effect blank for cards the players carry out themselves, or put{" "}
-            <code>duplicate</code> for &quot;copy another card in your hand&quot;.
+            <code>powerup</code>. Leave effect blank for cards the players carry out themselves, or put one of:{" "}
+            <code>duplicate</code> (copy another card in your hand), <code>steal</code> (take a random card from
+            another team, Elimination only), <code>veto</code> (cancel a curse on you, or take back a stolen card
+            within 60 s), <code>draw 4 pick 2</code> (a new draw), <code>hand +1</code> (hand limit +1 for the rest
+            of the game).
           </p>
           <textarea
             name="table"
@@ -136,13 +140,15 @@ export function CardManager() {
           {teams.map((team) => {
             const held = inPlay.filter((c) => c.holder_team === team.id);
             const inHand = held.filter((c) => c.status === "hand").length;
+            const limit = game.hand_limit + team.hand_bonus;
             return held.length ? (
               <div key={team.id}>
                 <div className="text-sm font-semibold">
                   {team.name}{" "}
-                  <span className={inHand > game.hand_limit ? "text-red-700" : "font-normal text-gray-500"}>
-                    ({inHand}/{game.hand_limit}
-                    {inHand > game.hand_limit ? ", over the limit" : ""})
+                  <span className={inHand > limit ? "text-red-700" : "font-normal text-gray-500"}>
+                    ({inHand}/{limit}
+                    {team.hand_bonus > 0 ? ` incl. +${team.hand_bonus} bonus` : ""}
+                    {inHand > limit ? ", over the limit" : ""})
                   </span>
                 </div>
                 <ul className="space-y-1">
@@ -253,7 +259,7 @@ function DrawRow({ draw, teamName }: { draw: CardDraw; teamName: string }) {
     <li className="rounded border p-2 text-sm">
       <div className="flex items-center gap-2">
         <span className="min-w-0 flex-1">
-          <b>{teamName}</b>: draw {draw.size} ({draw.source})
+          <b>{teamName}</b>: {drawLabel(draw.size, draw.keep)} ({draw.source})
           {draw.status === "open" && <span className="text-purple-700"> (cards showing)</span>}
         </span>
         <button

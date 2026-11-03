@@ -5,7 +5,8 @@ import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { loadCurses, loadTeams } from "@/lib/queries";
 import { curseSpeed } from "@/lib/time";
 import type { ActionResult } from "@/lib/types";
-import { clearCurse, syncMySpeed } from "./gameActions";
+import { clearCurse, syncMySpeed, vetoCurse } from "./gameActions";
+import { useHasVeto } from "./StealAlert";
 import { Notice } from "@/components/Notice";
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -17,8 +18,9 @@ export function CurseBanner({ teamId }: { teamId: string }) {
   const { data: curses } = useLiveTable("curses", loadCurses);
   const { data: teams } = useLiveTable("teams", loadTeams);
   const [result, setResult] = useState<ActionResult>(null);
-  const [confirmClear, setConfirmClear] = useState(false);
+  const [confirm, setConfirm] = useState<"clear" | "veto" | null>(null);
   const [pending, startTransition] = useTransition();
+  const hasVeto = useHasVeto(teamId);
 
   if (!curses || !teams) return null;
   const me = teams.find((t) => t.id === teamId);
@@ -33,7 +35,7 @@ export function CurseBanner({ teamId }: { teamId: string }) {
   const run = (action: () => Promise<ActionResult>) =>
     startTransition(async () => {
       setResult(await action());
-      setConfirmClear(false);
+      setConfirm(null);
       refreshAllLiveTables();
     });
 
@@ -69,7 +71,7 @@ export function CurseBanner({ teamId }: { teamId: string }) {
             </p>
           )}
           <p className="text-sm">Your countdown runs 1× faster until you clear it.</p>
-          {confirmClear ? (
+          {confirm === "clear" ? (
             <div className="flex gap-2">
               <button
                 disabled={pending}
@@ -78,17 +80,43 @@ export function CurseBanner({ teamId }: { teamId: string }) {
               >
                 Yes, we did it
               </button>
-              <button onClick={() => setConfirmClear(false)} className="flex-1 rounded-lg border bg-white p-3">
+              <button onClick={() => setConfirm(null)} className="flex-1 rounded-lg border bg-white p-3">
                 Cancel
               </button>
             </div>
+          ) : confirm === "veto" ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Use your Veto card to cancel this curse?</p>
+              <div className="flex gap-2">
+                <button
+                  disabled={pending}
+                  onClick={() => run(() => vetoCurse(onMe.id))}
+                  className="flex-1 rounded-lg bg-red-600 p-3 font-semibold text-white disabled:opacity-50"
+                >
+                  Yes, veto it
+                </button>
+                <button onClick={() => setConfirm(null)} className="flex-1 rounded-lg border bg-white p-3">
+                  Cancel
+                </button>
+              </div>
+            </div>
           ) : (
-            <button
-              onClick={() => setConfirmClear(true)}
-              className="w-full rounded-lg border-2 border-green-600 bg-white p-3 font-semibold text-green-700"
-            >
-              We completed the task: curse cleared
-            </button>
+            <>
+              <button
+                onClick={() => setConfirm("clear")}
+                className="w-full rounded-lg border-2 border-green-600 bg-white p-3 font-semibold text-green-700"
+              >
+                We completed the task: curse cleared
+              </button>
+              {hasVeto && (
+                <button
+                  onClick={() => setConfirm("veto")}
+                  className="w-full rounded-lg border-2 border-red-600 bg-white p-3 font-semibold text-red-700"
+                >
+                  Use Veto to cancel this curse
+                </button>
+              )}
+            </>
           )}
         </div>
       )}

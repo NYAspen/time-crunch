@@ -4,7 +4,7 @@ import { useState } from "react";
 import { TeamList } from "@/components/TeamList";
 import { TimeHistory } from "@/components/TimeHistory";
 import { useLiveTable } from "@/components/useLiveTable";
-import { loadCardDraws, loadCards, loadGameState, loadLedger } from "@/lib/queries";
+import { loadCardDraws, loadCards, loadGameState, loadLedger, loadTeams } from "@/lib/queries";
 import { CardHand } from "./CardHand";
 import { ChallengeBoard } from "./ChallengeBoard";
 
@@ -23,9 +23,11 @@ export function TeamTabs({ teamId }: { teamId: string }) {
   const { data: ledger } = useLiveTable("time_ledger", loadLedger);
   const { data: cards } = useLiveTable("cards", loadCards);
   const { data: game } = useLiveTable("game_state", loadGameState);
+  const { data: teams } = useLiveTable("teams", loadTeams);
   const waitingDraws = draws?.filter((d) => d.team_id === teamId && d.status !== "done").length ?? 0;
   const handSize = cards?.filter((c) => c.holder_team === teamId && c.status === "hand").length ?? 0;
-  const overLimit = !!game && handSize > game.hand_limit;
+  const limit = game ? game.hand_limit + (teams?.find((t) => t.id === teamId)?.hand_bonus ?? 0) : 0;
+  const overLimit = !!game && handSize > limit;
 
   return (
     <div className="space-y-3">
@@ -49,7 +51,7 @@ export function TeamTabs({ teamId }: { teamId: string }) {
                   overLimit ? "bg-red-600 text-white" : tab === t.id ? "bg-white/20" : "bg-gray-200 text-gray-700"
                 }`}
               >
-                {handSize}/{game.hand_limit}
+                {handSize}/{limit}
               </span>
             )}
             {t.id === "cards" && waitingDraws > 0 && (

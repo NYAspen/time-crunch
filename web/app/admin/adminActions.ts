@@ -4,7 +4,7 @@
 // Managing team LOGINS needs the secret key, so that stays in ./actions.ts.
 import { parseTable } from "@/lib/csv";
 import { createClient } from "@/lib/supabase/client";
-import { CARD_EFFECTS, CARD_TYPES, PHASES, SPEEDS, type ActionResult, type Phase, type Speed } from "@/lib/types";
+import { CARD_EFFECTS_HELP, CARD_TYPES, parseEffect, PHASES, SPEEDS, type ActionResult, type Phase, type Speed } from "@/lib/types";
 import { deleteAllTeams } from "./actions";
 
 // ---------------------------------------------------------------------------
@@ -207,7 +207,7 @@ export async function importCards(_prev: ActionResult, formData: FormData): Prom
       description: row.description ?? "",
       range_text: row.range ?? "",
       clearance: row.clearance ?? "",
-      effect: (row.effect ?? "").trim().toLowerCase(),
+      effect: (row.effect ?? "").trim().toLowerCase().replace(/\s+/g, " "),
     };
     const where = `Row ${i + 2} ("${card.name}")`;
     if (card.name.length < 1 || card.name.length > 60)
@@ -218,10 +218,10 @@ export async function importCards(_prev: ActionResult, formData: FormData): Prom
     if (!Number.isInteger(card.copies) || card.copies < 1 || card.copies > 50) {
       return { ok: false, message: `${where}: copies must be a whole number from 1 to 50. Nothing was imported.` };
     }
-    if (card.effect && !(CARD_EFFECTS as readonly string[]).includes(card.effect)) {
+    if (!parseEffect(card.effect)) {
       return {
         ok: false,
-        message: `${where}: effect must be blank or one of ${CARD_EFFECTS.join(", ")}. Nothing was imported.`,
+        message: `${where}: effect must be blank or one of: ${CARD_EFFECTS_HELP}. Draws show up to 10 cards and can't keep more than they show. Nothing was imported.`,
       };
     }
     cards.push(card);

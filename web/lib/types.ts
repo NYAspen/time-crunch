@@ -35,6 +35,7 @@ export type PublicTeam = {
   status: "active" | "eliminated";
   speed: number;
   eliminated_at: string | null;
+  hand_bonus: number; // extra hand-limit slots from "hand +N" cards (migration 0015)
 };
 
 // Private: a team can only read its own clock; admins can read all.
@@ -77,9 +78,35 @@ export const CARD_TYPES = ["curse", "powerup"] as const;
 export type CardTypeKind = (typeof CARD_TYPES)[number];
 export const CARD_TYPE_LABELS: Record<CardTypeKind, string> = { curse: "Curse", powerup: "Power-up" };
 
-// Automatic effects. Cards with no effect are carried out by the players.
-export const CARD_EFFECTS = ["duplicate"] as const;
-export type CardEffect = (typeof CARD_EFFECTS)[number];
+// Automatic effects (migration 0015). Cards with no effect are carried out by the players.
+//   duplicate      copy another card in your hand
+//   steal          take a random card from another team (Elimination, in range)
+//   veto           cancel a curse on you, or take back a card stolen in the last 60 s
+//   draw X pick Y  a new draw: X cards shown, keep Y (X up to 10)
+//   hand +N        hand limit +N for the rest of the game (N up to 9)
+export const CARD_EFFECTS_HELP = "duplicate, steal, veto, draw X pick Y (e.g. draw 4 pick 2), hand +N (e.g. hand +1)";
+export type CardEffect = string;
+
+export type ParsedEffect =
+  | { kind: "none" }
+  | { kind: "duplicate" | "steal" | "veto" }
+  | { kind: "draw"; size: number; keep: number }
+  | { kind: "hand"; bonus: number };
+
+// null if the text isn't a valid effect.
+export function parseEffect(effect: string | null): ParsedEffect | null {
+  if (!effect) return { kind: "none" };
+  if (effect === "duplicate" || effect === "steal" || effect === "veto") return { kind: effect };
+  const draw = /^draw (\d+) pick (\d+)$/.exec(effect);
+  if (draw) {
+    const size = Number(draw[1]);
+    const keep = Number(draw[2]);
+    return size >= 1 && size <= 10 && keep >= 1 && keep <= size ? { kind: "draw", size, keep } : null;
+  }
+  const hand = /^hand \+([1-9])$/.exec(effect);
+  if (hand) return { kind: "hand", bonus: Number(hand[1]) };
+  return null;
+}
 
 export type CardType = {
   id: string;
@@ -105,6 +132,8 @@ export type CardDraw = {
   id: string;
   team_id: string;
   size: number;
+  keep: number; // how many of the shown cards the team keeps (migration 0015)
+  kept: number;
   source: string;
   status: "pending" | "open" | "done";
   created_at: string;
@@ -114,7 +143,7 @@ export type CardDraw = {
 export type TeamUndo = {
   id: string;
   team_id: string;
-  kind: "claim" | "use" | "discard" | "clear_curse";
+  kind: "claim" | "use" | "discard" | "clear_curse" | "veto";
   label: string;
   created_at: string;
   expires_at: string;
@@ -131,6 +160,18 @@ export type Curse = {
   status: "active" | "cleared";
   started_at: string;
   cleared_at: string | null;
+};
+
+// A card taken by a steal card. Teams see steals they made or suffered (RLS).
+// The victim can veto until veto_until (migration 0015).
+export type Steal = {
+  id: string;
+  attacker_team: string;
+  target_team: string;
+  card_name: string;
+  created_at: string;
+  veto_until: string;
+  vetoed_at: string | null;
 };
 
 export type ActivityLogEntry = {

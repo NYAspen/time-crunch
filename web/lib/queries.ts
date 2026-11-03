@@ -9,6 +9,7 @@ import type {
   GameState,
   LedgerEntry,
   PublicTeam,
+  Steal,
   TeamClock,
   TeamUndo,
 } from "@/lib/types";
@@ -24,7 +25,7 @@ export async function loadGameState(): Promise<GameState> {
 export async function loadTeams(): Promise<PublicTeam[]> {
   const { data, error } = await createClient()
     .from("teams")
-    .select("id, name, status, speed, eliminated_at")
+    .select("id, name, status, speed, eliminated_at, hand_bonus")
     .order("name");
   if (error) throw new Error(error.message);
   return data;
@@ -94,7 +95,7 @@ export async function loadCards(): Promise<Card[]> {
 export async function loadCardDraws(): Promise<CardDraw[]> {
   const { data, error } = await createClient()
     .from("card_draws")
-    .select("id, team_id, size, source, status, created_at")
+    .select("id, team_id, size, keep, kept, source, status, created_at")
     .neq("status", "done")
     .order("created_at");
   if (error) throw new Error(error.message);
@@ -124,6 +125,19 @@ export async function loadCurses(): Promise<Curse[]> {
     .select("id, attacker_team, target_team, card_name, range_text, clearance, status, started_at, cleared_at")
     .or(`status.eq.active,cleared_at.gte.${since}`)
     .order("started_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Steals from the last 10 minutes; the screen shows a Veto button while
+// veto_until hasn't passed (server clock).
+export async function loadSteals(): Promise<Steal[]> {
+  const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { data, error } = await createClient()
+    .from("steals")
+    .select("id, attacker_team, target_team, card_name, created_at, veto_until, vetoed_at")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data;
 }

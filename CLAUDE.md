@@ -206,7 +206,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - Challenges and cards are CSV files in `content/`, editable in Google Sheets or Excel.
 - They are loaded through an admin Import screen.
 - **Challenges** (`content/challenges-example.csv`) have the columns `title, task, reward_cards, reward_minutes`. Copy the rows from Google Sheets, headers included, into Admin → Challenges → Import. Imported challenges go into the hidden pool, and the board fills from it at random.
-- **Cards** (`content/cards-example.csv`) have the columns `name, type, copies, description, range, clearance, effect`. `type` is `curse` or `powerup`; `effect` is blank (manual) or `duplicate`. Import them in Admin → Cards → Import cards.
+- **Cards** (`content/cards-example.csv`) have the columns `name, type, copies, description, range, clearance, effect`. `type` is `curse` or `powerup`; `effect` is blank (manual), `duplicate`, `steal`, `veto`, `draw X pick Y` or `hand +N`. Import them in Admin → Cards → Import cards.
 
 **Fresh test game:** the admin-only "Reset game" (type RESET to confirm) works like this:
 - It clears time, time history, claims, hands, draws, curses and the activity log.
@@ -408,6 +408,14 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
     - Time history was its own section above the Activity log (removed 2026-10-26; undo is in the Activity log)
     - home and admin pages keep the full phase banner
 
+- **Power-ups** (migration `0015_powerups.sql`, 2026-11-02; **not yet run**, run after 0014):
+  - `draw X pick Y`: a new draw that keeps Y of X (`card_draws.keep` / `kept`). `choose_card` keeps the draw open until Y are kept. A draw showing no more than Y cards goes straight into the hand. Challenge draws stay keep 1.
+  - `hand +N`: `teams.hand_bonus` (public) is added to the game's limit (`_hand_limit(team)`) for the rest of the game. Reset sets it back to 0.
+  - `steal`: Elimination only, with a range confirmation (like curses). Moves a random card from the target's hand and records a `steals` row (attacker, target or admin can read it).
+  - `veto`: not playable from the hand. `veto_curse` (Veto button on the curse banner, any time while cursed; `cleared_by = 'veto'`, speeds shift back) and `veto_steal` (`app/team/StealAlert.tsx`, within 60 s, only while the card is still in the thief's hand).
+  - Team Undo (60 s) and admin activity-log Undo cover steals, draws, hand bonuses and vetoes. A vetoed curse or steal can't be undone by the attacker.
+  - `rls-check.mjs` has 4 new checks.
+
 ### Outstanding
 - Full-loop test on several phones.
 - Stages 2–5 (Tier 1) by Nov 1. Then the playtest, Tier 2 if there is time, and the rehearsal (section 2).
@@ -486,5 +494,6 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - Undoing a curse doesn't refund the extra seconds the victim drained (at most 60 s); the admin can add time if needed.
 - 2026-10-26: **Admin Time history removed; undo happens from the Activity log** (migration 0014). Undoing a challenge's time bonus there undoes the whole claim, including its draw.
 - 2026-10-23: **Hand limit added** (D8). Default 5, admin-adjustable. Over the limit, the team must discard before drawing or using cards.
+- 2026-11-02: **Power-ups** (migration 0015): Veto cancels a curse on you (any time while active) or takes back a stolen card within 60 s. Steal works like a curse: Elimination only, with a range confirmation. Hand +N lasts the rest of the game.
 - 2026-11-02: **Wording:** teams tap **Completed** instead of Claim, and card rewards read "draw N pick 1" (or "draw 1 card"). This is a text change only; the database still calls it a claim, and server messages (errors, the Undo bar) still say "claim".
 - 2026-10-23: **Curses can't be played during Preparation**, only during Elimination (D11). Teams can still draw and hold them in the morning.

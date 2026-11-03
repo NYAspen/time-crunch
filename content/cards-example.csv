@@ -3,5 +3,8 @@ Slow Down,curse,2,The target team's countdown runs at 2x (and yours at 0x) until
 Tourist Trap,curse,2,The target team's countdown runs at 2x (and yours at 0x) until they clear it.,1 km,Take a selfie with a stranger.,
 Brain Freeze,curse,1,The target team's countdown runs at 2x (and yours at 0x) until they clear it.,300 m,Eat something frozen.,
 Duplicate,powerup,3,Duplicate another card in your hand.,,,duplicate
-Veto,powerup,2,Block the next curse played on your team. Show this card to the attacker.,,,
+Veto,powerup,2,Cancel a curse on your team or take back a card stolen from you within 60 seconds.,,,veto
 Tourist Trap,curse,2,The target team's countdown runs at 2x (and yours at 0x) until they clear it.,1 km,Take a selfie with a stranger.,
+Lucky Draw,powerup,2,Draw 4 cards and keep 2.,,,draw 4 pick 2
+Deep Pockets,powerup,2,Your hand limit goes up by 1 for the rest of the game.,,,hand +1
+Pickpocket,powerup,2,Take a random card from another team's hand.,500 m,,steal

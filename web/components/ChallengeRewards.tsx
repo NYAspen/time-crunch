@@ -1,8 +1,8 @@
 import type { Challenge } from "@/lib/types";
 
 // "draw 3 pick 1"; a single card goes straight into the hand, so it's just "draw 1 card".
-export function drawLabel(cards: number) {
-  return cards === 1 ? "draw 1 card" : `draw ${cards} pick 1`;
+export function drawLabel(cards: number, keep = 1) {
+  return cards === 1 ? "draw 1 card" : `draw ${cards} pick ${keep}`;
 }
 
 export function ChallengeRewards({ challenge }: { challenge: Pick<Challenge, "reward_cards" | "reward_minutes"> }) {

@@ -54,7 +54,7 @@ export async function chooseCard(cardId: string): Promise<ActionResult> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc("choose_card", { p_card: cardId });
   if (error) return { ok: false, message: error.message };
-  return { ok: true, message: data ? `${data} added to your hand.` : "Card added to your hand." };
+  return { ok: true, message: data ? String(data) : "Card added to your hand." };
 }
 
 export async function playCard(
@@ -94,4 +94,20 @@ export async function clearCurse(curseId: string): Promise<ActionResult> {
   const { data, error } = await supabase.rpc("clear_curse", { p_curse: curseId });
   if (error) return { ok: false, message: error.message };
   return { ok: true, message: data ? String(data) : "Curse cleared." };
+}
+
+// Veto: the database finds a Veto card in the team's hand and checks the
+// curse is on this team / the steal was from it within 60 seconds.
+export async function vetoCurse(curseId: string): Promise<ActionResult> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("veto_curse", { p_curse: curseId });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: data ? String(data) : "Curse vetoed." };
+}
+
+export async function vetoSteal(stealId: string): Promise<ActionResult> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("veto_steal", { p_steal: stealId });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: data ? String(data) : "Steal vetoed." };
 }

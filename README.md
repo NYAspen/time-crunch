@@ -160,7 +160,14 @@ Keep the content in a Google Sheet and paste it into the admin page. Example fil
 | `description` | What the card does |
 | `range` | e.g. `500 m`. Shown on curses; players confirm they're within range. |
 | `clearance` | The task the cursed team must do to clear the curse |
-| `effect` | Blank for cards the players carry out themselves, or `duplicate` for "copy another card in your hand" |
+| `effect` | Blank for cards the players carry out themselves, or one of the automatic effects below |
+
+**Automatic effects:**
+- `duplicate`: copy another card in your hand.
+- `steal`: take a random card from another team's hand. Elimination only; the team confirms it is within range.
+- `veto`: stays in the hand. Cancels a curse on your team, or takes back a card stolen from you within 60 seconds.
+- `draw 4 pick 2`: a new draw (up to 10 cards shown; keep no more than are shown).
+- `hand +1`: the team's hand limit goes up by 1 (up to +9 per card) for the rest of the game.
 
 **Notes:**
 - Select the header row as well as the data rows when copying from Sheets.

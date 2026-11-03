@@ -19,6 +19,9 @@ const UNDOABLE = new Set([
   "curse_started",
   "card_discarded",
   "curse_cleared",
+  "card_stolen",
+  "curse_vetoed",
+  "steal_vetoed",
   "time_adjusted",
   "speed_changed",
   "speed_set_by_admin",
@@ -46,6 +49,12 @@ function describe(entry: ActivityLogEntry, teamNames: Record<string, string>) {
       return `${team} kept ${d.card}`;
     case "card_used":
       return `${team} used ${d.card}${d.target_team ? ` on ${d.target_team}` : ""}${d.target_card ? ` (copied ${d.target_card})` : ""}`;
+    case "card_stolen":
+      return `${team} stole ${d.stolen_card} from ${d.target_team} (${d.card})`;
+    case "curse_vetoed":
+      return `${team} vetoed the curse ${d.card} from ${d.attacker}`;
+    case "steal_vetoed":
+      return `${team} vetoed ${d.attacker}'s steal and took back ${d.card}`;
     case "curse_started":
       return `${team} cursed ${d.target_team} with ${d.card}`;
     case "card_discarded":
