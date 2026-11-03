@@ -278,6 +278,8 @@ function HandCard({
   const needsCurse = effect?.kind === "curseBoost" || isCurseCopy;
   const needsChallenge = effect?.kind === "replaceChallenge" || effect?.kind === "lockChallenge";
   const discardCount = effect?.kind === "discardDraw" ? effect.discard : 0;
+  // discard X draw Y can't be used without X other cards (checked in the database too).
+  const tooFewToDiscard = others.length < discardCount;
   const ready =
     canUse &&
     (!needsTeam || (!!targetTeam && inRange)) &&
@@ -309,13 +311,20 @@ function HandCard({
                 A Veto button appears when you are cursed or a card is stolen from you.
               </p>
             ) : (
-              <button
-                disabled={!canUse}
-                onClick={() => setMode("use")}
-                className="w-full rounded-lg bg-gray-900 p-2 font-semibold text-white disabled:opacity-40"
-              >
-                Use
-              </button>
+              <>
+                <button
+                  disabled={!canUse || tooFewToDiscard}
+                  onClick={() => setMode("use")}
+                  className="w-full rounded-lg bg-gray-900 p-2 font-semibold text-white disabled:opacity-40"
+                >
+                  Use
+                </button>
+                {tooFewToDiscard && (
+                  <p className="text-xs text-gray-600">
+                    Needs {discardCount} other card{discardCount === 1 ? "" : "s"} in your hand to discard.
+                  </p>
+                )}
+              </>
             )}
             {canDiscard && (
               <button
