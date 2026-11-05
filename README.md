@@ -138,7 +138,12 @@ From now on, every `git push` updates the live site automatically. Database chan
 
 ## 5. Loading challenges and cards
 
-Keep the content in a Google Sheet and paste it into the admin page. Example files are in `content/`. To use one, open Google Sheets, go to **File → Import → Upload**, and choose the file.
+Keep the content in a Google Sheet. Example files are in `content/`. To use one, open Google Sheets, go to **File → Import → Upload**, and choose the file.
+
+There are three ways to bring rows into the admin page. Each one fills the same box, so you can check the rows before tapping **Import**:
+- **CSV file:** choose a `.csv` file. Excel `.xlsx` files don't work; save as CSV first.
+- **Google Sheets link:** set the sheet's sharing to "Anyone with the link can view", open the right tab, copy the link from the address bar, paste it in and tap **Load**.
+- **Paste:** copy the rows from Sheets, including the header row, and paste them into the box.
 
 ### Challenges: Admin → Challenges → Import challenges
 | Column | Meaning |

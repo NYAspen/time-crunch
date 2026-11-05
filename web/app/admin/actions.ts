@@ -51,6 +51,51 @@ async function saveCode(teamId: string, code: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Content import (browsers aren't allowed to read Google's download directly)
+// ---------------------------------------------------------------------------
+
+// Only ever fetches from docs.google.com: the address is rebuilt from the sheet's id.
+function googleSheetCsvUrl(link: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(link.trim());
+  } catch {
+    return null;
+  }
+  if (url.hostname !== "docs.google.com") return null;
+
+  // The tab is in the link as gid=123, usually after the #.
+  const gid = /[#?&]gid=(\d+)/.exec(url.search + url.hash)?.[1];
+  const tab = gid ? `&gid=${gid}` : "";
+
+  // File → Share → Publish to web gives a /d/e/ link.
+  const published = /^\/spreadsheets\/d\/e\/([\w-]+)/.exec(url.pathname);
+  if (published) return `https://docs.google.com/spreadsheets/d/e/${published[1]}/pub?output=csv${tab}`;
+
+  const sheet = /^\/spreadsheets\/d\/([\w-]+)/.exec(url.pathname);
+  return sheet ? `https://docs.google.com/spreadsheets/d/${sheet[1]}/export?format=csv${tab}` : null;
+}
+
+export async function fetchGoogleSheet(link: string): Promise<{ result: ActionResult; text: string | null }> {
+  const failed = (message: string) => ({ result: { ok: false, message }, text: null });
+  if (!(await requireAdmin())) return { result: NOT_ADMIN, text: null };
+
+  const csvUrl = googleSheetCsvUrl(link);
+  if (!csvUrl) return failed("That isn't a Google Sheets link. It should start with https://docs.google.com/spreadsheets/d/");
+
+  try {
+    const response = await fetch(csvUrl, { cache: "no-store", signal: AbortSignal.timeout(15000) });
+    // A private sheet sends back a login page rather than a CSV.
+    if (!response.ok || !response.headers.get("content-type")?.includes("text/csv")) {
+      return failed('Could not read that sheet. In Google Sheets, click Share and set it to "Anyone with the link can view".');
+    }
+    return { result: null, text: await response.text() };
+  } catch {
+    return failed("Could not reach Google Sheets. Try again, or download the sheet as a CSV file and choose that.");
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Team logins (need the secret key, so these run on the server)
 // ---------------------------------------------------------------------------
 

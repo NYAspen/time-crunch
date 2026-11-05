@@ -171,7 +171,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - Browsers only **read**, and Row Level Security (RLS) limits what each user sees.
 - Every write goes through one of two paths:
   - A security-definer Postgres function (RPC). These functions check who is calling: for team actions, that the caller is that team, owns the card, the team is active, and the game is not paused. **The browser calls these directly** (`app/team/gameActions.ts`, `app/admin/adminActions.ts`). Don't route them through Next.js server actions: on Vercel, server actions run one at a time per phone and can hit slow cold starts, which made the game feel laggy.
-  - A server action (`app/admin/actions.ts`, plus the login actions) that re-checks admin rights and then uses the secret key (`lib/supabase/admin.ts`, server-only). Only managing team logins needs this.
+  - A server action (`app/admin/actions.ts`, plus the login actions) that re-checks admin rights and then uses the secret key (`lib/supabase/admin.ts`, server-only). Only managing team logins needs this. `fetchGoogleSheet` also runs there, because browsers can't read Google's CSV download; it needs no secret key and only ever fetches from docs.google.com.
 - Never trust the browser for remaining time, card ownership, challenge availability or elimination.
 
 **Atomic actions:** claims, draws and steals each run inside one Postgres function with row locks, so simultaneous requests can't both succeed.
@@ -206,7 +206,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 
 **Content:**
 - Challenges and cards are CSV files in `content/`, editable in Google Sheets or Excel.
-- They are loaded through an admin Import screen.
+- They are loaded through an admin Import screen (`components/ImportTable.tsx`). A CSV file, a Google Sheets link ("Anyone with the link can view") or pasted rows all fill the same box, and the admin then taps Import. `lib/csv.ts` reads the result.
 - **Challenges** (`content/challenges-example.csv`) have the columns `title, task, location, reward_cards, reward_keep, reward_minutes`. `location` (blank = anywhere) and `reward_keep` (default 1) are optional. Copy the rows from Google Sheets, headers included, into Admin → Challenges → Import. Imported challenges go into the hidden pool, and the board fills from it at random.
 - **Cards** (`content/cards-example.csv`) have the columns `name, type, copies, description, range, clearance, effect`. `type` is `curse` or `powerup`; `effect` is blank (manual), `duplicate`, `steal`, `veto`, `draw X pick Y`, `hand +N`, `reward xN`, `curse xN`, `curse copy`, `discard X draw Y`, `replace challenge` or `lock challenge`. Import them in Admin → Cards → Import cards.
 

@@ -5,6 +5,7 @@ import { CardView } from "@/components/CardView";
 import { drawLabel } from "@/components/ChallengeRewards";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { DeleteAllButton } from "@/components/DeleteAllButton";
+import { ImportTable } from "@/components/ImportTable";
 import { refreshAllLiveTables, useLiveTable, withRefresh } from "@/components/useLiveTable";
 import { loadCardDraws, loadCards, loadCardTypes, loadGameState, loadTeams } from "@/lib/queries";
 import type { ActionResult, Card, CardDraw, CardType, PublicTeam } from "@/lib/types";
@@ -75,7 +76,8 @@ export function CardManager() {
         <summary className="font-medium">Import cards</summary>
         <form action={importAction} className="mt-2 space-y-2">
           <p className="text-sm text-gray-600">
-            Paste rows from Google Sheets, header row included. Columns:{" "}
+            Choose a CSV file, load a Google Sheets link, or paste rows from Sheets below, header row included.
+            Columns:{" "}
             <code>name, type, copies, description, range, clearance, effect</code>. Type is <code>curse</code> or{" "}
             <code>powerup</code>. Leave effect blank for cards the players carry out themselves, or put one of:{" "}
             <code>duplicate</code> (copy another card in your hand), <code>steal</code> (take a random card from
@@ -87,12 +89,7 @@ export function CardManager() {
             board for a random one), <code>lock challenge</code> (only your team can complete it). The ×N ones
             don&apos;t stack.
           </p>
-          <textarea
-            name="table"
-            rows={6}
-            placeholder={EXAMPLE}
-            className="w-full rounded border p-2 font-mono text-xs"
-          />
+          <ImportTable placeholder={EXAMPLE} />
           <button
             disabled={importing}
             className="w-full rounded bg-blue-600 p-2 font-semibold text-white disabled:opacity-50"
