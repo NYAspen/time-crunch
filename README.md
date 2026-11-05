@@ -176,6 +176,12 @@ There are three ways to bring rows into the admin page. Each one fills the same 
 - `veto`: stays in the hand. Cancels a curse on your team. It doesn't work on power-ups. (A team without the card can pay 30 minutes to cancel a curse instead; the team that played the curse gains those 30 minutes.)
 - `draw 4 pick 2`: a new draw (up to 10 cards shown; keep no more than are shown).
 - `hand +1`: the team's hand limit goes up by 1 (up to +9 per card) for the rest of the game.
+- `reward x2`: the team's next completed challenge gives ×2 time and draws. Doesn't stack.
+- `curse x2`: the team gains 2× from one of its active curses. Doesn't stack.
+- `curse copy`: put one of the team's active curses on a second team too.
+- `discard 2 draw 3`: discard 2 other cards and draw 3.
+- `replace challenge`: swap a challenge on the board for a random one from the pool.
+- `lock challenge`: only the team that locks a challenge can complete it.
 
 **Notes:**
 - Select the header row as well as the data rows when copying from Sheets.

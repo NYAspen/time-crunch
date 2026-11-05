@@ -74,14 +74,6 @@ export function ChallengeManager() {
       <details className="rounded-lg bg-gray-50 p-3">
         <summary className="font-medium">Import challenges</summary>
         <form action={importAction} className="mt-2 space-y-2">
-          <p className="text-sm text-gray-600">
-            Choose a CSV file, load a Google Sheets link, or copy the header row plus the challenge rows from Sheets
-            and paste them below. Columns:{" "}
-            <code>title, task, location, reward_cards, reward_keep, reward_minutes</code>. <code>location</code> and{" "}
-            <code>reward_keep</code> can be left out (anywhere / keep 1). For &quot;draw 4 pick 2&quot;, put 4 in
-            reward_cards and 2 in reward_keep. New challenges go into the pool, and the board fills from it at
-            random.
-          </p>
           <ImportTable placeholder={EXAMPLE} />
           <button
             disabled={importing}

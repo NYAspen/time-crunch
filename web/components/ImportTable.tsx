@@ -43,8 +43,9 @@ export function ImportTable({ placeholder }: { placeholder: string }) {
 
   return (
     <>
-      <label className="block space-y-1">
-        <span className="text-sm font-medium">CSV file</span>
+      {/* The browser's own file input can't be styled, so it is hidden and its label is the button. */}
+      <label className="block w-full cursor-pointer rounded bg-gray-800 p-2 text-center font-semibold text-white has-disabled:cursor-default has-disabled:opacity-50 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-gray-900">
+        Choose CSV file
         <input
           type="file"
           accept=".csv,.tsv,.txt,text/csv"
@@ -54,7 +55,7 @@ export function ImportTable({ placeholder }: { placeholder: string }) {
             if (file) loadFile(file);
             e.target.value = ""; // so choosing the same file again reloads it
           }}
-          className="block w-full text-sm"
+          className="sr-only"
         />
       </label>
 
@@ -62,10 +63,6 @@ export function ImportTable({ placeholder }: { placeholder: string }) {
         <label htmlFor="sheet-link" className="block text-sm font-medium">
           Google Sheets link
         </label>
-        <p className="text-xs text-gray-600">
-          Set sharing to &quot;Anyone with the link can view&quot;, open the right tab, and copy the link from the
-          address bar.
-        </p>
         <div className="flex gap-2">
           <input
             id="sheet-link"

@@ -75,20 +75,6 @@ export function CardManager() {
       <details className="rounded-lg bg-gray-50 p-3">
         <summary className="font-medium">Import cards</summary>
         <form action={importAction} className="mt-2 space-y-2">
-          <p className="text-sm text-gray-600">
-            Choose a CSV file, load a Google Sheets link, or paste rows from Sheets below, header row included.
-            Columns:{" "}
-            <code>name, type, copies, description, range, clearance, effect</code>. Type is <code>curse</code> or{" "}
-            <code>powerup</code>. Leave effect blank for cards the players carry out themselves, or put one of:{" "}
-            <code>duplicate</code> (copy another card in your hand), <code>steal</code> (take a random card from
-            another team, no range), <code>veto</code> (cancel a curse on you),{" "}
-            <code>draw 4 pick 2</code> (a new draw), <code>hand +1</code> (hand limit +1 for the rest
-            of the game), <code>reward x2</code> (next completed challenge gives ×2 time and draws),{" "}
-            <code>curse x2</code> (you gain 2× from one of your curses), <code>curse copy</code> (put one of your
-            curses on a second team), <code>discard 2 draw 3</code>, <code>replace challenge</code> (swap one on the
-            board for a random one), <code>lock challenge</code> (only your team can complete it). The ×N ones
-            don&apos;t stack.
-          </p>
           <ImportTable placeholder={EXAMPLE} />
           <button
             disabled={importing}

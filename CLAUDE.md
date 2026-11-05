@@ -468,20 +468,20 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - The "Card stolen" box only shows when the team holds a Veto (to offer it); otherwise the pop-down says what was stolen.
   - `rls-check.mjs` has 1 new check.
 
-- **Paid veto; vetoes are curses only** (migration `0021_veto_for_time.sql`, 2026-11-04; **not yet run**):
+- **Paid veto; vetoes are curses only** (migration `0021_veto_for_time.sql`, 2026-11-04; run):
   - `veto_curse_for_time`: the victim pays 30 minutes and the attacker gains them (`kind = 'curse_veto'` in the time history). "Pay 30 min to veto" on each curse sign, greyed out with a note below 30 minutes. The database checks the exact time left.
   - `curses.veto_paid_ms` records the payment. `_restart_curse` gives the time back, so team Undo (60 s), admin activity-log Undo and admin Restart all refund both teams. It refuses if the attacker has less than that time left, so an undo can't knock them out. The attacker gets a pop-down (`curse_veto_undone`).
   - Veto cards no longer work on steals: `veto_steal` and `app/team/StealAlert.tsx` were removed. The `steals` table keeps `veto_until` / `vetoed_at`, unused except to undo old entries.
   - `rls-check.mjs`: the veto-steal check became a paid-veto check.
 
-- **Private speeds, visible team codes, no range on steals** (migration `0022_private_speed_codes_steal.sql`, 2026-11-04; **not yet run**):
+- **Private speeds, visible team codes, no range on steals** (migration `0022_private_speed_codes_steal.sql`, 2026-11-04; run):
   - Browsers can no longer read `teams.speed`: `teams` is granted column by column, so **a new column on `teams` must be added to that grant** before browsers can read it. Screens use `team_clocks.speed` (own team or admin) instead, and `PublicTeam` has no speed.
   - `team_codes` (admin read only, written with the secret key): Team logins shows each team's code. Teams created earlier show "not saved" until Set code is used.
   - `use_card` doesn't ask for a range confirmation on steals, the steal card has no range checkbox, and `CardView` never shows a range on one. Curses and curse copies still confirm range.
   - `rls-check.mjs` has 4 new checks.
 
 ### Outstanding
-- Run migrations 0021 and 0022 in Supabase, then deploy this code right away: until the new code is live, the old site errors on `teams.speed`.
+- Deploy the code for migrations 0021 and 0022 right away: until it is live, the old site errors on `teams.speed`.
 - Full-loop test on several phones.
 - Stages 2–5 (Tier 1) by Nov 1. Then the playtest, Tier 2 if there is time, and the rehearsal (section 2).
 - Write the real challenge list and card deck in the content format by about Nov 4.
