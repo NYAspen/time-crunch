@@ -79,8 +79,8 @@ export function CardManager() {
             <code>name, type, copies, description, range, clearance, effect</code>. Type is <code>curse</code> or{" "}
             <code>powerup</code>. Leave effect blank for cards the players carry out themselves, or put one of:{" "}
             <code>duplicate</code> (copy another card in your hand), <code>steal</code> (take a random card from
-            another team, Elimination only), <code>veto</code> (cancel a curse on you, or take back a stolen card
-            within 60 s), <code>draw 4 pick 2</code> (a new draw), <code>hand +1</code> (hand limit +1 for the rest
+            another team, no range), <code>veto</code> (cancel a curse on you),{" "}
+            <code>draw 4 pick 2</code> (a new draw), <code>hand +1</code> (hand limit +1 for the rest
             of the game), <code>reward x2</code> (next completed challenge gives ×2 time and draws),{" "}
             <code>curse x2</code> (you gain 2× from one of your curses), <code>curse copy</code> (put one of your
             curses on a second team), <code>discard 2 draw 3</code>, <code>replace challenge</code> (swap one on the

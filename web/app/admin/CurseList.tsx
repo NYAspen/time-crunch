@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
-import { loadCurses, loadTeams } from "@/lib/queries";
+import { loadClocks, loadCurses, loadTeams } from "@/lib/queries";
 import { curseSpeed } from "@/lib/time";
 import type { ActionResult } from "@/lib/types";
 import { adminClearCurse, adminRestartCurse, syncTeamSpeed } from "./adminActions";
@@ -12,11 +12,12 @@ import { Notice } from "@/components/Notice";
 export function CurseList() {
   const { data: curses } = useLiveTable("curses", loadCurses);
   const { data: teams } = useLiveTable("teams", loadTeams);
+  const { data: clocks } = useLiveTable("team_clocks", loadClocks);
   const [result, setResult] = useState<ActionResult>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  if (!curses || !teams) return null;
+  if (!curses || !teams || !clocks) return null;
   const name = (id: string) => teams.find((t) => t.id === id)?.name ?? "?";
   const active = curses.filter((c) => c.status === "active");
   // Cleared in the last hour (that's all loadCurses returns), newest first.
@@ -36,7 +37,7 @@ export function CurseList() {
   // Each curse shifts speeds by 1 (the attacker by more if boosted), so a team's
   // speed should be 1 + curses on it - what its curses take off. Offer a fix if it isn't.
   const speedInfo = (role: string, id: string) => {
-    const actual = teams.find((t) => t.id === id)?.speed;
+    const actual = clocks.find((c) => c.team_id === id)?.speed;
     const expected = curseSpeed(id, active);
     return (
       <span>

@@ -7,7 +7,6 @@ import { Toasts } from "@/components/Toasts";
 import { getCurrentTeam } from "@/lib/auth";
 import { CurseBanner } from "./CurseBanner";
 import { EventFeed } from "./EventFeed";
-import { StealAlert } from "./StealAlert";
 import { TeamClockPanel } from "./TeamClockPanel";
 import { TeamTabs } from "./TeamTabs";
 import { UndoBar } from "./UndoBar";
@@ -40,7 +39,6 @@ async function TeamView() {
       <PausedBox />
       <TeamClockPanel teamId={team.id} />
       <CurseBanner teamId={team.id} />
-      <StealAlert teamId={team.id} />
       <TeamTabs teamId={team.id} />
       {/* Pop-down notifications: action results and other teams' moves. */}
       <Toasts />

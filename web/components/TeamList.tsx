@@ -17,9 +17,6 @@ export function TeamList({ highlightTeamId }: { highlightTeamId?: string }) {
           <span className={team.id === highlightTeamId ? "font-bold" : ""}>
             {team.name}
             {team.id === highlightTeamId && " (you)"}
-            {team.status === "active" && team.speed !== 1 && (
-              <span className="ml-2 rounded-sm border-2 border-orange-600 px-1 text-xs font-bold text-orange-700">{team.speed}×</span>
-            )}
           </span>
           <span
             className={

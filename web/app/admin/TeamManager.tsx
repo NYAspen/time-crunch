@@ -3,13 +3,14 @@
 import { useActionState, useState, useTransition } from "react";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { refreshAllLiveTables, useLiveTable, withRefresh } from "@/components/useLiveTable";
-import { loadTeams } from "@/lib/queries";
+import { loadTeamCodes, loadTeams } from "@/lib/queries";
 import { MIN_CODE_LENGTH, type ActionResult, type PublicTeam } from "@/lib/types";
 import { createTeam, deleteTeam, renameTeam, resetTeamCode } from "./actions";
 import { Notice } from "@/components/Notice";
 
 export function TeamManager() {
   const { data: teams, error } = useLiveTable("teams", loadTeams);
+  const { data: codes } = useLiveTable("team_codes", loadTeamCodes);
   const [createResult, createAction, creating] = useActionState(withRefresh(createTeam), null);
 
   return (
@@ -45,14 +46,14 @@ export function TeamManager() {
       {teams?.length === 0 && <p className="text-gray-500">No teams yet.</p>}
       <ul className="space-y-2">
         {teams?.map((team) => (
-          <TeamRow key={team.id} team={team} />
+          <TeamRow key={team.id} team={team} code={codes?.find((c) => c.team_id === team.id)?.code} />
         ))}
       </ul>
     </CollapsibleSection>
   );
 }
 
-function TeamRow({ team }: { team: PublicTeam }) {
+function TeamRow({ team, code }: { team: PublicTeam; code?: string }) {
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [result, setResult] = useState<ActionResult>(null);
@@ -75,6 +76,14 @@ function TeamRow({ team }: { team: PublicTeam }) {
           </button>
         </div>
       </div>
+      <p className="text-sm break-all">
+        <span className="tc-label text-gray-500">Code:</span>{" "}
+        {code ? (
+          <span className="font-mono font-bold">{code}</span>
+        ) : (
+          <span className="text-gray-500">not saved. Tap Edit and use Set code to save one.</span>
+        )}
+      </p>
 
       {editing && (
         <div className="space-y-2">

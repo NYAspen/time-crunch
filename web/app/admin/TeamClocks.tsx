@@ -73,13 +73,13 @@ function ClockRow({
 
   return (
     <li
-      className={`space-y-2 rounded-lg border p-3 ${team.speed !== 1 && !eliminated ? "border-2 border-l-8 border-orange-600" : ""}`}
+      className={`space-y-2 rounded-lg border p-3 ${clock.speed !== 1 && !eliminated ? "border-2 border-l-8 border-orange-600" : ""}`}
     >
       <div className="flex items-center justify-between gap-2">
         <span className={`font-medium ${eliminated ? "text-gray-400 line-through" : ""}`}>{team.name}</span>
         <div className="flex items-center gap-2">
-          {!eliminated && team.speed !== 1 && (
-            <span className="rounded-sm border-2 border-orange-600 px-1 text-xs font-bold text-orange-700">{team.speed}×</span>
+          {!eliminated && clock.speed !== 1 && (
+            <span className="rounded-sm border-2 border-orange-600 px-1 text-xs font-bold text-orange-700">{clock.speed}×</span>
           )}
           <Countdown game={game} team={team} clock={clock} serverNow={serverNow} size="small" />
           <button onClick={() => setOpen(!open)} className="rounded border px-2 py-1 text-sm">
@@ -113,7 +113,7 @@ function ClockRow({
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm">Speed (each tap moves 1×):</span>
             <SpeedStepper
-              speed={team.speed}
+              speed={clock.speed}
               onChange={async (delta) => {
                 const { result, speed } = await stepTeamSpeed(team.id, delta);
                 setResult(result);

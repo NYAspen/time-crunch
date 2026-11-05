@@ -41,7 +41,7 @@ export function TeamClockPanel({ teamId }: { teamId: string }) {
         clock={clock}
         serverNow={serverNow}
         // The countdown is a black sign (themes.css), so the arrows use their dark style.
-        side={active && <SpeedStepper speed={team.speed} onChange={changeSpeed} vertical dark />}
+        side={active && <SpeedStepper speed={clock.speed} onChange={changeSpeed} vertical dark />}
       />
       {active && (
         <p className="text-xs text-gray-500">

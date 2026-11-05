@@ -35,7 +35,8 @@ export function CardView({
   const isCurse = cardType.type === "curse";
   const body = isCurse ? cardType.clearance : cardType.description;
   const rows = [
-    { label: "Range", value: cardType.range_text },
+    // Steals have no range, even if the imported sheet gave one.
+    { label: "Range", value: cardType.effect === "steal" ? "" : cardType.range_text },
     ...(isCurse ? [] : [{ label: "To clear", value: cardType.clearance }]),
   ].filter((r) => r.value);
 

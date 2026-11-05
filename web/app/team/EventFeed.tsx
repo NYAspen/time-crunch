@@ -144,13 +144,20 @@ function describe(e: FeedEntry, teamId: string): Omit<Toast, "id"> | null {
         message: `${team} cleared your curse ${d.card}. Your speed has shifted back.`,
       };
     case "curse_vetoed":
-      return { tone: "red", icon: "!", title: "Curse vetoed", message: `${team} used a Veto on your curse ${d.card}.` };
-    case "steal_vetoed":
       return {
         tone: "red",
         icon: "!",
-        title: "Steal vetoed",
-        message: `${team} used a Veto and took back ${d.card}.`,
+        title: "Curse vetoed",
+        message: d.minutes
+          ? `${team} paid ${d.minutes} minutes to veto your curse ${d.card}. You gain ${d.minutes} minutes.`
+          : `${team} used a Veto on your curse ${d.card}.`,
+      };
+    case "curse_veto_undone":
+      return {
+        tone: "black",
+        icon: "i",
+        title: "Veto undone",
+        message: `${team}'s veto was undone. Your curse ${d.card} is back on, and the ${d.minutes} minutes went back to them.`,
       };
     case "time_adjusted":
       return admin(

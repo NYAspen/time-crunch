@@ -41,6 +41,15 @@ async function log(actorUserId: string, eventType: string, teamId: string | null
     .insert({ actor_user_id: actorUserId, event_type: eventType, team_id: teamId, details });
 }
 
+// Keeps a copy the admin can read: the login password itself can't be read back.
+// Returns a warning to show if that failed (the login still works).
+async function saveCode(teamId: string, code: string) {
+  const { error } = await createAdminClient()
+    .from("team_codes")
+    .upsert({ team_id: teamId, code, updated_at: new Date().toISOString() });
+  return error ? ` Write it down: it could not be saved for the admin page (${error.message}).` : "";
+}
+
 // ---------------------------------------------------------------------------
 // Team logins (need the secret key, so these run on the server)
 // ---------------------------------------------------------------------------
@@ -93,8 +102,9 @@ export async function createTeam(_prev: ActionResult, formData: FormData): Promi
     return { ok: false, message: `Could not create team: ${teamError.message}` };
   }
 
+  const warning = await saveCode(teamId, code);
   await log(adminId, "team_created", teamId, { name });
-  return { ok: true, message: `Created "${name}". Their code is: ${code}` };
+  return { ok: true, message: `Created "${name}". Their code is: ${code}.${warning}` };
 }
 
 export async function renameTeam(teamId: string, formData: FormData): Promise<ActionResult> {
@@ -131,8 +141,9 @@ export async function resetTeamCode(teamId: string, formData: FormData): Promise
   const { error } = await admin.auth.admin.updateUserById(team.user_id, { password: code });
   if (error) return { ok: false, message: error.message };
 
+  const warning = await saveCode(teamId, code);
   await log(adminId, "team_code_reset", teamId, {});
-  return { ok: true, message: `New code: ${code}` };
+  return { ok: true, message: `New code: ${code}.${warning}` };
 }
 
 export async function deleteTeam(teamId: string): Promise<ActionResult> {

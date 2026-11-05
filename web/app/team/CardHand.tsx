@@ -274,6 +274,7 @@ function HandCard({
   const isVeto = effect?.kind === "veto";
   const isCurseCopy = effect?.kind === "curseCopy";
   const needsTeam = isCurse || isSteal || isCurseCopy;
+  const needsRange = isCurse || isCurseCopy;
   const needsCurse = effect?.kind === "curseBoost" || isCurseCopy;
   const needsChallenge = effect?.kind === "replaceChallenge" || effect?.kind === "lockChallenge";
   const discardCount = effect?.kind === "discardDraw" ? effect.discard : 0;
@@ -281,7 +282,8 @@ function HandCard({
   const tooFewToDiscard = others.length < discardCount;
   const ready =
     canUse &&
-    (!needsTeam || (!!targetTeam && inRange)) &&
+    (!needsTeam || !!targetTeam) &&
+    (!needsRange || inRange) &&
     (!needsCurse || !!curseId) &&
     (!needsChallenge || !!challengeId) &&
     picked.length === discardCount &&
@@ -305,10 +307,8 @@ function HandCard({
             )}
             {isVeto ? (
               // Veto is never played from here: a Veto button appears when the team
-              // is cursed or has a card stolen.
-              <p className="text-xs text-gray-600">
-                A Veto button appears when you are cursed or a card is stolen from you.
-              </p>
+              // is cursed.
+              <p className="text-xs text-gray-600">A Veto button appears when you are cursed.</p>
             ) : (
               <>
                 <button
@@ -431,25 +431,27 @@ function HandCard({
                       );
                     })}
                   </select>
-                  <label className="flex items-start gap-1.5 text-xs">
-                    <input
-                      type="checkbox"
-                      checked={inRange}
-                      onChange={(e) => setInRange(e.target.checked)}
-                      className="mt-0.5"
-                    />
-                    {/* The range isn't always "near the target" (e.g. near a place, or the
-                        team furthest from you), so confirm the card's own wording. */}
-                    <span>
-                      {rangeText ? (
-                        <>
-                          Range condition met: <b>{rangeText}</b>
-                        </>
-                      ) : (
-                        "This card's range condition is met."
-                      )}
-                    </span>
-                  </label>
+                  {needsRange && (
+                    <label className="flex items-start gap-1.5 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={inRange}
+                        onChange={(e) => setInRange(e.target.checked)}
+                        className="mt-0.5"
+                      />
+                      {/* The range isn't always "near the target" (e.g. near a place, or the
+                          team furthest from you), so confirm the card's own wording. */}
+                      <span>
+                        {rangeText ? (
+                          <>
+                            Range condition met: <b>{rangeText}</b>
+                          </>
+                        ) : (
+                          "This card's range condition is met."
+                        )}
+                      </span>
+                    </label>
+                  )}
                 </>
               )
             ) : isDuplicateEffect ? (
@@ -481,7 +483,7 @@ function HandCard({
                     const r = await playCard(card.id, {
                       targetCardId: isDuplicateEffect ? target : undefined,
                       targetTeamId: needsTeam ? targetTeam : undefined,
-                      inRange: needsTeam ? inRange : undefined,
+                      inRange: needsRange ? inRange : undefined,
                       curseId: needsCurse ? curseId : undefined,
                       challengeId: needsChallenge ? challengeId : undefined,
                       cardIds: discardCount > 0 ? picked : undefined,

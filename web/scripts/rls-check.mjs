@@ -229,8 +229,25 @@ const checks = [
     const { data, error } = await supabase.from("teams").update({ hand_bonus: 50 }).eq("id", team.id).select();
     return !!error || data.length === 0;
   }],
-  ["Veto a steal that wasn't from it", async () => {
-    const { error } = await supabase.rpc("veto_steal", { p_steal: "00000000-0000-0000-0000-000000000000" });
+  ["Pay to veto a curse that isn't on it", async () => {
+    const { error } = await supabase.rpc("veto_curse_for_time", { p_curse: "00000000-0000-0000-0000-000000000000" });
+    return !!error;
+  }],
+  // 0022: speeds are private, and codes are admin only.
+  ["See teams' speeds", async () => {
+    const { error } = await supabase.from("teams").select("speed");
+    return !!error;
+  }],
+  ["See another team's speed on its clock", async () => {
+    const { data, error } = await supabase.from("team_clocks").select("speed").neq("team_id", team.id);
+    return !!error || data.length === 0;
+  }],
+  ["Read team codes", async () => {
+    const { data, error } = await supabase.from("team_codes").select("code");
+    return !!error || data.length === 0;
+  }],
+  ["Write a team code", async () => {
+    const { error } = await supabase.from("team_codes").upsert({ team_id: team.id, code: "hacked" });
     return !!error;
   }],
   // Notifications (0020): the feed must never show other teams' private moves.

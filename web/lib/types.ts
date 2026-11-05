@@ -29,10 +29,16 @@ export type PublicTeam = {
   id: string;
   name: string;
   status: "active" | "eliminated";
-  speed: number;
   eliminated_at: string | null;
   hand_bonus: number; // extra hand-limit slots from "hand +N" cards (migration 0015)
   reward_multiplier: number; // "reward xN" waiting for the team's next challenge (migration 0019)
+};
+
+// Admin only: a team's login code (migration 0022). Teams created before that
+// have none until the admin sets it again.
+export type TeamCode = {
+  team_id: string;
+  code: string;
 };
 
 // Private: a team can only read its own clock; admins can read all.
@@ -81,8 +87,8 @@ export const CARD_TYPE_LABELS: Record<CardTypeKind, string> = { curse: "Curse", 
 
 // Automatic effects (migration 0015). Cards with no effect are carried out by the players.
 //   duplicate      copy another card in your hand
-//   steal          take a random card from another team (Elimination, in range)
-//   veto           cancel a curse on you, or take back a card stolen in the last 60 s
+//   steal          take a random card from another team (no range)
+//   veto           cancel a curse on you
 //   draw X pick Y  a new draw: X cards shown, keep Y (X up to 10)
 //   hand +N        hand limit +N for the rest of the game (N up to 9)
 // Migration 0019:
@@ -184,18 +190,6 @@ export type Curse = {
   started_at: string;
   cleared_at: string | null;
   attacker_gain: number; // the attacker's speed shifts by -attacker_gain ("curse xN", migration 0019)
-};
-
-// A card taken by a steal card. Teams see steals they made or suffered (RLS).
-// The victim can veto until veto_until (migration 0015).
-export type Steal = {
-  id: string;
-  attacker_team: string;
-  target_team: string;
-  card_name: string;
-  created_at: string;
-  veto_until: string;
-  vetoed_at: string | null;
 };
 
 export type ActivityLogEntry = {

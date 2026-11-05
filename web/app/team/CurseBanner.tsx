@@ -2,13 +2,29 @@
 
 import { useState, useTransition } from "react";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
-import { loadCurses, loadTeams } from "@/lib/queries";
-import { curseSpeed } from "@/lib/time";
+import { useServerNow } from "@/components/useServerNow";
+import { loadCards, loadCardTypes, loadClocks, loadCurses, loadTeams } from "@/lib/queries";
+import { curseSpeed, remainingMs } from "@/lib/time";
 import type { ActionResult } from "@/lib/types";
-import { clearCurse, syncMySpeed, vetoCurse } from "./gameActions";
-import { useHasVeto } from "./StealAlert";
+import { clearCurse, syncMySpeed, vetoCurse, vetoCurseForTime } from "./gameActions";
 import { showResult } from "@/components/Toasts";
 import { SignBox } from "@/components/SignBox";
+
+// What a veto without a card costs (the database checks this too: migration 0021).
+const VETO_COST_MS = 30 * 60 * 1000;
+
+// Whether the team holds a Veto card (the database picks which copy to use).
+function useHasVeto(teamId: string) {
+  const { data: cards } = useLiveTable("cards", loadCards);
+  const { data: types } = useLiveTable("card_types", loadCardTypes);
+  if (!cards || !types) return false;
+  return cards.some(
+    (c) =>
+      c.holder_team === teamId &&
+      c.status === "hand" &&
+      types.find((t) => t.id === c.type_id)?.effect === "veto",
+  );
+}
 
 // Shows curses on/by this team. Playing and clearing a curse shifts both teams'
 // speeds by 1 automatically; if the speed was changed by hand since, a button
@@ -16,14 +32,19 @@ import { SignBox } from "@/components/SignBox";
 export function CurseBanner({ teamId }: { teamId: string }) {
   const { data: curses } = useLiveTable("curses", loadCurses);
   const { data: teams } = useLiveTable("teams", loadTeams);
+  const { data: clocks } = useLiveTable("team_clocks", loadClocks);
+  const serverNow = useServerNow(1000);
   // Which curse's button was tapped (a team can have several curses on it).
-  const [confirm, setConfirm] = useState<{ id: string; kind: "clear" | "veto" } | null>(null);
+  const [confirm, setConfirm] = useState<{ id: string; kind: "clear" | "veto" | "paidVeto" } | null>(null);
   const [pending, startTransition] = useTransition();
   const hasVeto = useHasVeto(teamId);
 
   if (!curses || !teams) return null;
   const me = teams.find((t) => t.id === teamId);
   if (!me || me.status !== "active") return null;
+
+  const clock = clocks?.find((c) => c.team_id === teamId);
+  const canPayVeto = !!clock && serverNow !== null && remainingMs(clock, serverNow) >= VETO_COST_MS;
 
   const name = (id: string) => teams.find((t) => t.id === id)?.name ?? "another team";
   const onMe = curses.filter((c) => c.status === "active" && c.target_team === teamId);
@@ -42,13 +63,13 @@ export function CurseBanner({ teamId }: { teamId: string }) {
   // Only shown when a speed was changed by hand since: the countdown already
   // shows the current speed.
   const expected = curseSpeed(teamId, curses.filter((c) => c.status === "active"));
-  const speedFix = me.speed !== expected && (
+  const speedFix = clock && clock.speed !== expected && (
     <button
       disabled={pending}
       onClick={() => run(syncMySpeed)}
       className="w-full rounded-lg bg-gray-900 p-2 text-sm font-bold text-white disabled:opacity-50"
     >
-      Your countdown is at {me.speed}×. Set it back to {expected}×
+      Your countdown is at {clock.speed}×. Set it back to {expected}×
     </button>
   );
 
@@ -80,37 +101,64 @@ export function CurseBanner({ teamId }: { teamId: string }) {
               {c.clearance && <p className="font-semibold">{c.clearance}</p>}
             </div>
             {asked ? (
-              <div className="flex gap-2">
-                <button
-                  disabled={pending}
-                  onClick={() => run(() => (asked === "clear" ? clearCurse(c.id) : vetoCurse(c.id)), true)}
-                  className={`flex-1 p-2 font-bold text-white disabled:opacity-50 ${
-                    asked === "clear" ? "bg-green-600" : "bg-red-600"
-                  }`}
-                >
-                  {asked === "clear" ? "Yes, we did it" : "Yes, use Veto"}
-                </button>
-                <button onClick={() => setConfirm(null)} className="flex-1 border-2 border-gray-900 bg-white p-2 font-bold">
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setConfirm({ id: c.id, kind: "clear" })}
-                  className="flex-1 bg-green-600 p-2 font-bold text-white"
-                >
-                  ✓ Task done
-                </button>
-                {hasVeto && (
-                  <button
-                    onClick={() => setConfirm({ id: c.id, kind: "veto" })}
-                    className="flex-1 border-2 border-red-600 bg-white p-2 font-bold text-red-700"
-                  >
-                    Veto
-                  </button>
+              <>
+                {asked === "paidVeto" && (
+                  <p className="text-sm font-semibold">
+                    You lose 30 minutes. {name(c.attacker_team)} gains 30 minutes.
+                  </p>
                 )}
-              </div>
+                <div className="flex gap-2">
+                  <button
+                    disabled={pending}
+                    onClick={() =>
+                      run(
+                        () =>
+                          asked === "clear"
+                            ? clearCurse(c.id)
+                            : asked === "veto"
+                              ? vetoCurse(c.id)
+                              : vetoCurseForTime(c.id),
+                        true,
+                      )
+                    }
+                    className={`flex-1 p-2 font-bold text-white disabled:opacity-50 ${
+                      asked === "clear" ? "bg-green-600" : "bg-red-600"
+                    }`}
+                  >
+                    {asked === "clear" ? "Yes, we did it" : asked === "veto" ? "Yes, use Veto" : "Yes, pay 30 min"}
+                  </button>
+                  <button onClick={() => setConfirm(null)} className="flex-1 border-2 border-gray-900 bg-white p-2 font-bold">
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setConfirm({ id: c.id, kind: "clear" })}
+                    className="flex-1 bg-green-600 p-2 font-bold text-white"
+                  >
+                    ✓ Task done
+                  </button>
+                  {hasVeto && (
+                    <button
+                      onClick={() => setConfirm({ id: c.id, kind: "veto" })}
+                      className="flex-1 border-2 border-red-600 bg-white p-2 font-bold text-red-700"
+                    >
+                      Use Veto card
+                    </button>
+                  )}
+                </div>
+                <button
+                  disabled={!canPayVeto}
+                  onClick={() => setConfirm({ id: c.id, kind: "paidVeto" })}
+                  className="w-full border-2 border-red-600 bg-white p-2 font-bold text-red-700 disabled:opacity-40"
+                >
+                  Pay 30 min to veto
+                </button>
+                {!canPayVeto && <p className="text-xs text-gray-600">You need at least 30 minutes left to pay for a veto.</p>}
+              </>
             )}
           </SignBox>
         );

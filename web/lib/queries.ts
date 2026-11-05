@@ -10,8 +10,8 @@ import type {
   GameState,
   LedgerEntry,
   PublicTeam,
-  Steal,
   TeamClock,
+  TeamCode,
   TeamUndo,
 } from "@/lib/types";
 
@@ -26,8 +26,15 @@ export async function loadGameState(): Promise<GameState> {
 export async function loadTeams(): Promise<PublicTeam[]> {
   const { data, error } = await createClient()
     .from("teams")
-    .select("id, name, status, speed, eliminated_at, hand_bonus, reward_multiplier")
+    .select("id, name, status, eliminated_at, hand_bonus, reward_multiplier")
     .order("name");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Admin only (RLS): teams get nothing back.
+export async function loadTeamCodes(): Promise<TeamCode[]> {
+  const { data, error } = await createClient().from("team_codes").select("team_id, code");
   if (error) throw new Error(error.message);
   return data;
 }
@@ -133,19 +140,6 @@ export async function loadCurses(): Promise<Curse[]> {
     .select("id, attacker_team, target_team, card_name, range_text, clearance, status, started_at, cleared_at, attacker_gain")
     .or(`status.eq.active,cleared_at.gte.${since}`)
     .order("started_at", { ascending: false });
-  if (error) throw new Error(error.message);
-  return data;
-}
-
-// Steals from the last 10 minutes; the screen shows a Veto button while
-// veto_until hasn't passed (server clock).
-export async function loadSteals(): Promise<Steal[]> {
-  const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-  const { data, error } = await createClient()
-    .from("steals")
-    .select("id, attacker_team, target_team, card_name, created_at, veto_until, vetoed_at")
-    .gte("created_at", since)
-    .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data;
 }

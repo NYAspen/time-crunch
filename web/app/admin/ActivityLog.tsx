@@ -56,7 +56,11 @@ function describe(entry: ActivityLogEntry, teamNames: Record<string, string>) {
     case "card_stolen":
       return `${team} stole ${d.stolen_card} from ${d.target_team} (${d.card})`;
     case "curse_vetoed":
-      return `${team} vetoed the curse ${d.card} from ${d.attacker}`;
+      return d.minutes
+        ? `${team} paid ${d.minutes} min to veto the curse ${d.card} from ${d.attacker} (${d.attacker} gained ${d.minutes} min)`
+        : `${team} vetoed the curse ${d.card} from ${d.attacker}`;
+    case "curse_veto_undone":
+      return `${team}'s paid veto of ${d.card} undone: ${d.minutes} min moved back from ${d.attacker}`;
     case "steal_vetoed":
       return `${team} vetoed ${d.attacker}'s steal and took back ${d.card}`;
     case "curse_started":

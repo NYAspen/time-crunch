@@ -167,8 +167,8 @@ Keep the content in a Google Sheet and paste it into the admin page. Example fil
 
 **Automatic effects:**
 - `duplicate`: copy another card in your hand.
-- `steal`: take a random card from another team's hand. Works in either phase; the team confirms the range condition is met.
-- `veto`: stays in the hand. Cancels a curse on your team, or takes back a card stolen from you within 60 seconds.
+- `steal`: take a random card from another team's hand. Works in either phase, and has no range.
+- `veto`: stays in the hand. Cancels a curse on your team. It doesn't work on power-ups. (A team without the card can pay 30 minutes to cancel a curse instead; the team that played the curse gains those 30 minutes.)
 - `draw 4 pick 2`: a new draw (up to 10 cards shown; keep no more than are shown).
 - `hand +1`: the team's hand limit goes up by 1 (up to +9 per card) for the rest of the game.
 
@@ -216,7 +216,7 @@ Run these from inside the `web` folder. They use the keys in `.env.local`. Repla
 | Command | What it checks |
 |---|---|
 | `node --env-file=.env.local scripts/sync-check.mjs` | Checks that live updates reach browsers quickly. It should say **PASS ✓** with times well under 1000 ms. |
-| `node --env-file=.env.local scripts/rls-check.mjs "Team A" codeA` | Logs in as a team and tries 41 things a team must **not** be able to do. Every line should say **BLOCKED ✓**. Run it after every database change. |
+| `node --env-file=.env.local scripts/rls-check.mjs "Team A" codeA` | Logs in as a team and tries the things a team must **not** be able to do. Every line should say **BLOCKED ✓**. Run it after every database change. |
 | `node --env-file=.env.local scripts/race-claim.mjs "Team A" codeA "Team B" codeB` | Two teams claim the same challenge at the same instant. Exactly one should win. ⚠ This really claims 2 challenges. |
 | `node --env-file=.env.local scripts/race-draw.mjs "Team A" codeA "Team B" codeB` | Two teams draw cards at the same instant. No card should go to both. ⚠ Each team keeps a real card. |
 
@@ -235,7 +235,7 @@ Run **Reset game** after testing.
 | Updates are slow or missing | Run `scripts/sync-check.mjs` (section 7). If it fails, check that every database file has been run, including `0010_sync_broadcast.sql`. |
 | A team's page doesn't update | It updates live, and reloads every 20 seconds anyway. If it seems stuck, refresh the page. Locking the phone and unlocking it also triggers a reload. |
 | Admin login says "This account is not an admin" | Run the `insert into public.admins …` line from section 2.3 for that email. |
-| A team forgot its code | Admin → Team logins → Edit → Set code. |
+| A team forgot its code | Admin → Team logins shows each team's code. If it says "not saved", use Edit → Set code. |
 | The board isn't full | The challenge pool has run out. Import more challenges. |
 | Teams can't draw ("The deck is empty") | Every card is in someone's hand. Add copies (**+1**) or import more cards. |
 | "deadlock detected" when playing a curse | Two teams cursed each other at exactly the same moment. Tap **Use** again. |

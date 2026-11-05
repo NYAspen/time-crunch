@@ -118,7 +118,7 @@ export async function clearCurse(curseId: string): Promise<ActionResult> {
 }
 
 // Veto: the database finds a Veto card in the team's hand and checks the
-// curse is on this team / the steal was from it within 60 seconds.
+// curse is on this team.
 export async function vetoCurse(curseId: string): Promise<ActionResult> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc("veto_curse", { p_curse: curseId });
@@ -126,9 +126,11 @@ export async function vetoCurse(curseId: string): Promise<ActionResult> {
   return { ok: true, message: data ? String(data) : "Curse vetoed." };
 }
 
-export async function vetoSteal(stealId: string): Promise<ActionResult> {
+// Veto without a card: the database moves 30 minutes to the team that played
+// the curse, and refuses if this team has less than 30 minutes left.
+export async function vetoCurseForTime(curseId: string): Promise<ActionResult> {
   const supabase = createClient();
-  const { data, error } = await supabase.rpc("veto_steal", { p_steal: stealId });
+  const { data, error } = await supabase.rpc("veto_curse_for_time", { p_curse: curseId });
   if (error) return { ok: false, message: error.message };
-  return { ok: true, message: data ? String(data) : "Steal vetoed." };
+  return { ok: true, message: data ? String(data) : "Curse vetoed." };
 }

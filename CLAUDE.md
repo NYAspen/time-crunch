@@ -77,8 +77,9 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 | D9 | Each active curse adds **+1×** to the victim's speed and **−1×** to the attacker's (from 1×: victim 2×, attacker 0×). Curses stack, so a team can curse and be cursed at once. A team cursing two teams runs at −1×, so its clock goes up. | Changed from fixed speeds on 2026-10-23 (migration 0011). |
 | D10 | A team can have several curses on it and play several, but **only one per pair**: team A can have at most one active curse on team B (B can still curse A at the same time). | Changed from one curse per target on 2026-11-03 (migration 0017). |
 | D11 | Curses can only be **played** during Elimination (blocked in Preparation, checked by the server). Steals work in either phase. No curse effects apply while paused. When a team is eliminated, every curse it played or suffers ends automatically and the other team's speed shifts back. | Play-blocking added 2026-10-23 (migration 0011). Steals in Preparation and curses ending at elimination from 2026-11-03 (migration 0016). |
-| D12 | Range is honor-system in Tier 1: the attacker ticks "Range condition met: <the card's range text>" when playing the card. A range need not be "near the target" (e.g. near a place, or the team furthest from you). | Automatic checking is Tier 2. |
-| D13 | Teams change their countdown speed by hand with **▼ / ▲ arrows**, 1× per tap, anywhere from −20× to 20×. 1× is normal, 0× stops the clock, 2× drains double, below 0 the clock goes up. Curses shift speeds by 1 (D9). Speed only has an effect during Elimination when the game isn't paused. Manual changes are for fixing mistakes. | Every change is logged, and every team's speed is shown publicly. Arrows replaced the 0×/1×/2× buttons on 2026-11-03 (migration 0017). |
+| D12 | Range is honor-system in Tier 1: the attacker ticks "Range condition met: <the card's range text>" when playing the card. A range need not be "near the target" (e.g. near a place, or the team furthest from you). Steals have no range (migration 0022). | Automatic checking is Tier 2. |
+| D14 | A cursed team can end a curse early, any time (even while paused), in two ways: a **Veto card** (free), or **paying 30 minutes**, which go to the team that played the curse. Paying is refused below 30 minutes left; exactly 30 is allowed and takes the team to 0 (eliminated). Vetoes only work on curses, not on power-ups such as steals. | Added 2026-11-04 (migration 0021). |
+| D13 | Teams change their countdown speed by hand with **▼ / ▲ arrows**, 1× per tap, anywhere from −20× to 20×. 1× is normal, 0× stops the clock, 2× drains double, below 0 the clock goes up. Curses shift speeds by 1 (D9). Speed only has an effect during Elimination when the game isn't paused. Manual changes are for fixing mistakes. | Every change is logged. A team's speed is private to it and the admin (migration 0022). Arrows replaced the 0×/1×/2× buttons on 2026-11-03 (migration 0017). |
 
 ## 4. Requirements by tier
 
@@ -93,7 +94,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - When the victim marks the clearance task done, both shift back automatically.
   - Teams can also change their own speed by hand, to fix mistakes.
   - Every speed change goes in the balance history.
-  - Each team's current speed is visible to everyone and on the admin page.
+  - A team's current speed is visible only to that team and on the admin page.
   - The admin can reset a team's speed and correct its balance.
 - **Balance history:** every change is recorded (team, amount, reason, who, when). The admin can add or subtract time, or reverse an entry, to correct mistakes.
 - State survives refresh and closing the page, because the server owns the time.
@@ -187,6 +188,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 **Team identification:**
 - Each team is a Supabase Auth user (`team-<teamId>@example.com`) whose password is the team's lowercased code.
 - The admin is a Supabase user listed in the `admins` table.
+- Passwords can't be read back, so a copy of each code is kept in `team_codes` (admin only), saved by `app/admin/actions.ts` when a team is created or its code is set.
 
 **Live UI:** `components/useLiveTable.ts` reloads data when the database broadcasts that a table changed, when the tab becomes visible again, when the phone reconnects, and every 20 s as a safety net.
 - **Sync broadcast** (migration 0010):
@@ -466,7 +468,20 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - The "Card stolen" box only shows when the team holds a Veto (to offer it); otherwise the pop-down says what was stolen.
   - `rls-check.mjs` has 1 new check.
 
+- **Paid veto; vetoes are curses only** (migration `0021_veto_for_time.sql`, 2026-11-04; **not yet run**):
+  - `veto_curse_for_time`: the victim pays 30 minutes and the attacker gains them (`kind = 'curse_veto'` in the time history). "Pay 30 min to veto" on each curse sign, greyed out with a note below 30 minutes. The database checks the exact time left.
+  - `curses.veto_paid_ms` records the payment. `_restart_curse` gives the time back, so team Undo (60 s), admin activity-log Undo and admin Restart all refund both teams. It refuses if the attacker has less than that time left, so an undo can't knock them out. The attacker gets a pop-down (`curse_veto_undone`).
+  - Veto cards no longer work on steals: `veto_steal` and `app/team/StealAlert.tsx` were removed. The `steals` table keeps `veto_until` / `vetoed_at`, unused except to undo old entries.
+  - `rls-check.mjs`: the veto-steal check became a paid-veto check.
+
+- **Private speeds, visible team codes, no range on steals** (migration `0022_private_speed_codes_steal.sql`, 2026-11-04; **not yet run**):
+  - Browsers can no longer read `teams.speed`: `teams` is granted column by column, so **a new column on `teams` must be added to that grant** before browsers can read it. Screens use `team_clocks.speed` (own team or admin) instead, and `PublicTeam` has no speed.
+  - `team_codes` (admin read only, written with the secret key): Team logins shows each team's code. Teams created earlier show "not saved" until Set code is used.
+  - `use_card` doesn't ask for a range confirmation on steals, the steal card has no range checkbox, and `CardView` never shows a range on one. Curses and curse copies still confirm range.
+  - `rls-check.mjs` has 4 new checks.
+
 ### Outstanding
+- Run migrations 0021 and 0022 in Supabase, then deploy this code right away: until the new code is live, the old site errors on `teams.speed`.
 - Full-loop test on several phones.
 - Stages 2–5 (Tier 1) by Nov 1. Then the playtest, Tier 2 if there is time, and the rehearsal (section 2).
 - Write the real challenge list and card deck in the content format by about Nov 4.
@@ -550,4 +565,6 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - 2026-11-03: **Challenges are Preparation only** (board hidden in Elimination); **steals allowed in Preparation**; **an eliminated team's curses end** (no time transfer after elimination; the few seconds between hitting zero and the server noticing are not refunded). Challenges get a location and "draw N pick K" rewards (migration 0016).
 - 2026-11-03: **Several curses per team, one per pair of teams** (D10), and **speed arrows** (D13): teams step their own speed 1× at a time, −20× to 20×, instead of picking 0×/1×/2×. Default chosen: teams can step below 0× by hand too (logged and public). Alternative if abused: limit teams' own arrows to 0×–2× and leave the full range to the admin.
 - 2026-11-03: **Six more power-ups** (migration 0019). Defaults confirmed: reward ×N applies to the *next* completion (time and draws); curse ×N is played on an active curse and only boosts the attacker's gain; curse copy is played on an active curse; a lock lasts until the team completes it, one lock per team. **×N power-ups don't stack.** Defaults chosen: discard X draw Y keeps all Y drawn; a replaced challenge goes back to the pool.
+- 2026-11-04: **A team's speed is private** (replaces "Speed is public" from 2026-10-22), **the admin can see team codes** (stored readable, admin only), and **steals have no range** (migration 0022).
+- 2026-11-04: **Paid veto, and vetoes are curses only** (D14, migration 0021). Replaces "Veto takes back a stolen card" from 2026-11-02. Defaults chosen: the Veto card stays free alongside the paid option, and a paid veto can be undone like a card veto.
 - 2026-10-23: **Curses can't be played during Preparation**, only during Elimination (D11). Teams can still draw and hold them in the morning.
