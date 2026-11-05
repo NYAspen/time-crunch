@@ -157,6 +157,7 @@ There are three ways to bring rows into the admin page. Each one fills the same 
 
 - Imported challenges go into a hidden **pool**. The board shows a set number at a time (10 by default; change it under "Challenges on board").
 - When a challenge is claimed, a random one from the pool replaces it.
+- To swap one yourself, tap **Replace** next to it under "On the board". A random one from the pool takes its place, and the old one moves to "Removed", where you can restore it to the pool. Replace is greyed out when the pool is empty.
 - Challenges can only be completed during Preparation. The board disappears from the team page once Elimination starts.
 
 ### Cards: Admin → Cards → Import cards

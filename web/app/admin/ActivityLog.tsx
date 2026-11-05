@@ -41,6 +41,8 @@ function describe(entry: ActivityLogEntry, teamNames: Record<string, string>) {
       return "Game resumed";
     case "challenge_claimed":
       return `${team} completed "${d.challenge}" (${Number(d.multiplier ?? 1) > 1 ? `×${d.multiplier}: ` : ""}${formatDelta(Number(d.minutes) * 60000)}, ${Number(d.multiplier ?? 1) > 1 ? `${d.multiplier} × ` : ""}${drawLabel(Number(d.cards), Number(d.keep ?? 1))})`;
+    case "challenge_retired":
+      return `Challenge "${d.challenge}" removed (admin)${d.new_challenge ? `, replaced by "${d.new_challenge}"` : ""}`;
     case "claim_undone":
       return `Claim of "${d.challenge}" by ${team} undone${byAdmin}`;
     case "cards_drawn":

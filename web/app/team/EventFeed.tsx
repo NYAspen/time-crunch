@@ -119,6 +119,17 @@ function describe(e: FeedEntry, teamId: string): Omit<Toast, "id"> | null {
             title: "Challenge locked",
             message: `${team} locked "${d.challenge}". Only they can complete it now.`,
           };
+    case "challenge_retired":
+      return {
+        tone: "black",
+        icon: "↻",
+        title: d.new_challenge ? "Challenge replaced" : "Challenge removed",
+        message:
+          (d.new_challenge
+            ? `The admin replaced "${d.challenge}" with "${d.new_challenge}".`
+            : `The admin removed "${d.challenge}" from the board.`) +
+          (d.was_locked ? " The lock on it has ended." : ""),
+      };
     case "curse_started":
       return {
         tone: "red",

@@ -85,7 +85,12 @@ export function ChallengeManager() {
         </form>
       </details>
 
-      <ChallengeGroup title="On the board" challenges={active} onChanged={refreshAllLiveTables} />
+      <ChallengeGroup
+        title="On the board"
+        challenges={active}
+        onChanged={refreshAllLiveTables}
+        poolEmpty={pool.length === 0}
+      />
       <ChallengeGroup
         title="Unused pool (hidden from teams)"
         challenges={pool}
@@ -122,17 +127,19 @@ function ChallengeGroup({
   challenges,
   onChanged,
   collapsed,
+  poolEmpty,
 }: {
   title: string;
   challenges: Challenge[];
   onChanged: () => void;
   collapsed?: boolean;
+  poolEmpty?: boolean; // nothing left to replace a board challenge with
 }) {
   const list = (
     <ul className="mt-2 space-y-2">
       {challenges.length === 0 && <li className="text-sm text-gray-500">None.</li>}
       {challenges.map((c) => (
-        <ChallengeRow key={c.id} challenge={c} onChanged={onChanged} />
+        <ChallengeRow key={c.id} challenge={c} onChanged={onChanged} poolEmpty={poolEmpty} />
       ))}
     </ul>
   );
@@ -154,8 +161,17 @@ function ChallengeGroup({
   );
 }
 
-function ChallengeRow({ challenge, onChanged }: { challenge: Challenge; onChanged: () => void }) {
+function ChallengeRow({
+  challenge,
+  onChanged,
+  poolEmpty,
+}: {
+  challenge: Challenge;
+  onChanged: () => void;
+  poolEmpty?: boolean;
+}) {
   const [editing, setEditing] = useState(false);
+  const [confirmReplace, setConfirmReplace] = useState(false);
   const [result, setResult] = useState<ActionResult>(null);
   const [pending, startTransition] = useTransition();
 
@@ -178,10 +194,46 @@ function ChallengeRow({ challenge, onChanged }: { challenge: Challenge; onChange
           {challenge.task && <div className="text-sm text-gray-600">{challenge.task}</div>}
           <ChallengeRewards challenge={challenge} />
         </div>
-        <button onClick={() => setEditing(!editing)} className="shrink-0 rounded border px-2 py-1 text-sm">
-          {editing ? "Close" : "Edit"}
-        </button>
+        <div className="flex shrink-0 gap-2">
+          {challenge.status === "active" && (
+            <button
+              disabled={poolEmpty}
+              onClick={() => setConfirmReplace(true)}
+              className="rounded border px-2 py-1 text-sm disabled:opacity-40"
+            >
+              Replace
+            </button>
+          )}
+          <button onClick={() => setEditing(!editing)} className="rounded border px-2 py-1 text-sm">
+            {editing ? "Close" : "Edit"}
+          </button>
+        </div>
       </div>
+
+      {confirmReplace && (
+        <div className="space-y-2">
+          <p className="text-sm">
+            A random challenge from the pool takes its place. This one moves to Removed, where you can restore it to
+            the pool.
+            {challenge.locked_by && " The team that locked it loses the lock."}
+          </p>
+          <div className="flex gap-2">
+            <button
+              disabled={pending || poolEmpty}
+              onClick={() => {
+                setConfirmReplace(false);
+                run(() => setChallengeStatus(challenge.id, "retired"));
+              }}
+              className="flex-1 rounded bg-gray-800 p-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              Yes, replace it
+            </button>
+            <button onClick={() => setConfirmReplace(false)} className="flex-1 rounded border p-2 text-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {editing && (
         <div className="space-y-2">

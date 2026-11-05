@@ -480,7 +480,11 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - `use_card` doesn't ask for a range confirmation on steals, the steal card has no range checkbox, and `CardView` never shows a range on one. Curses and curse copies still confirm range.
   - `rls-check.mjs` has 4 new checks.
 
+- **Admin Replace on the board** (migration `0023_notify_challenge_replaced.sql`, 2026-11-04; **not yet run**): a Replace button with a confirm step on each board challenge. It uses `admin_set_challenge_status(…, 'retired')`, which refills the board at random. Greyed out when the pool is empty.
+  - Teams get a pop-down when a board challenge is replaced or removed in Preparation (`tell_teams` in the log entry, `team_feed`). Hidden pool challenges are never mentioned.
+
 ### Outstanding
+- Run migration 0023 in Supabase. Until then Replace works, but teams get no pop-down.
 - Deploy the code for migrations 0021 and 0022 right away: until it is live, the old site errors on `teams.speed`.
 - Full-loop test on several phones.
 - Stages 2–5 (Tier 1) by Nov 1. Then the playtest, Tier 2 if there is time, and the rehearsal (section 2).
