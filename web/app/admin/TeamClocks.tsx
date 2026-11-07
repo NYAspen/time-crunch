@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
+import { SignBox } from "@/components/SignBox";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { Countdown } from "@/components/Countdown";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
@@ -27,6 +29,17 @@ export function TeamClocks() {
   return (
     <CollapsibleSection title="Team time" summary={`${activeCount} active`} defaultOpen>
       {teams.length === 0 && <p className="text-gray-500">No teams yet.</p>}
+      {/* Every team has a clock, so getting none back means the admin login has ended. */}
+      {teams.length > 0 && clocks.length === 0 && (
+        <SignBox tone="red" compact title="You've been logged out">
+          <p>
+            <Link href="/admin/login" className="font-bold underline">
+              Log in again
+            </Link>{" "}
+            to see the clocks.
+          </p>
+        </SignBox>
+      )}
       <ul className="space-y-2">
         {teams.map((team) => {
           const clock = clocks.find((c) => c.team_id === team.id);

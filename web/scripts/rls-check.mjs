@@ -250,6 +250,11 @@ const checks = [
     const { error } = await supabase.from("team_codes").upsert({ team_id: team.id, code: "hacked" });
     return !!error;
   }],
+  // 0026: range notes only change through a played card.
+  ["Write a range note on a card directly", async () => {
+    const { data, error } = await supabase.from("cards").update({ range_note: "infinite range" }).eq("holder_team", team.id).select();
+    return !!error || data.length === 0;
+  }],
   // Notifications (0020): the feed must never show other teams' private moves.
   ["See other teams' private moves in its notifications", async () => {
     const { data, error } = await supabase.rpc("team_feed");

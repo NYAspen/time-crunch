@@ -12,3 +12,6 @@ Curse Two Teams,powerup,1,Pick one of your active curses and put it on a second 
 Discard 2 draw 3,powerup,2,Discard 2 other cards and draw 3.,,,discard 2 draw 3
 Challenge Swap,powerup,2,Send one challenge on the board back to the pool; a random one replaces it.,,,replace challenge
 Lock Challenge,powerup,2,Lock one challenge on the board so only your team can complete it.,,,lock challenge
+Range Extension,powerup,5,Extend the range of one curse by double.,,,range x2
+The Boogeyman,powerup,2,"Upon taking a photo of another team, you take 30 minutes of their time. Elimination phase only.",,,boogeyman
+Infinity,powerup,2,"Make the range of one curse infinite, applies to anyone anywhere (note: the other team can always use the 30 minute veto).",,,range infinite

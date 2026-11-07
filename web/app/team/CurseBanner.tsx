@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { useServerNow } from "@/components/useServerNow";
+import { useSettled } from "@/components/useSettled";
 import { loadCards, loadCardTypes, loadClocks, loadCurses, loadTeams } from "@/lib/queries";
 import { curseSpeed, remainingMs } from "@/lib/time";
 import type { ActionResult } from "@/lib/types";
@@ -63,14 +64,8 @@ export function CurseBanner({ teamId }: { teamId: string }) {
   // Only shown when a speed was changed by hand since: the countdown already
   // shows the current speed.
   const expected = curseSpeed(teamId, curses.filter((c) => c.status === "active"));
-  const speedFix = clock && clock.speed !== expected && (
-    <button
-      disabled={pending}
-      onClick={() => run(syncMySpeed)}
-      className="w-full rounded-lg bg-gray-900 p-2 text-sm font-bold text-white disabled:opacity-50"
-    >
-      Your countdown is at {clock.speed}×. Set it back to {expected}×
-    </button>
+  const speedFix = clock && (
+    <SpeedFix actual={clock.speed} expected={expected} pending={pending} onFix={() => run(syncMySpeed)} />
   );
 
   // Curses on this team: one red sign each, with what to do to clear it.
@@ -202,6 +197,29 @@ export function CurseBanner({ teamId }: { teamId: string }) {
 
       {speedFix}
     </section>
+  );
+}
+
+function SpeedFix({
+  actual,
+  expected,
+  pending,
+  onFix,
+}: {
+  actual: number;
+  expected: number;
+  pending: boolean;
+  onFix: () => void;
+}) {
+  if (!useSettled(actual !== expected)) return null;
+  return (
+    <button
+      disabled={pending}
+      onClick={onFix}
+      className="w-full rounded-lg bg-gray-900 p-2 text-sm font-bold text-white disabled:opacity-50"
+    >
+      Your countdown is at {actual}×. Set it back to {expected}×
+    </button>
   );
 }
 

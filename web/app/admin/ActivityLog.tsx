@@ -53,8 +53,11 @@ function describe(entry: ActivityLogEntry, teamNames: Record<string, string>) {
       return (
         `${team} used ${d.card}${d.curse ? ` on the curse ${d.curse}` : ""}${d.target_team ? ` on ${d.target_team}` : ""}` +
         `${d.target_card ? ` (copied ${d.target_card})` : ""}${d.challenge ? ` on "${d.challenge}"` : ""}` +
-        `${d.new_challenge ? ` (replaced by "${d.new_challenge}")` : ""}${d.discarded ? ` (discarded ${d.discarded})` : ""}`
+        `${d.new_challenge ? ` (replaced by "${d.new_challenge}")` : ""}${d.discarded ? ` (discarded ${d.discarded})` : ""}` +
+        `${d.range_card ? ` on ${d.range_card} in hand (${d.range_note})` : ""}${d.taken_minutes ? ` (took ${d.taken_minutes} min)` : ""}`
       );
+    case "boogeyman_undone":
+      return `${team}'s Boogeyman undone: ${d.taken_minutes} min moved back to ${d.target_team}${byAdmin}`;
     case "card_stolen":
       return `${team} stole ${d.stolen_card} from ${d.target_team} (${d.card})`;
     case "curse_vetoed":

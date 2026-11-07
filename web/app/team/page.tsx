@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
+import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { LogoutButton } from "@/components/LogoutButton";
 import { PausedBox, PhaseTag } from "@/components/PhaseBanner";
+import { SessionGuard } from "@/components/SessionGuard";
 import { Toasts } from "@/components/Toasts";
 import { getCurrentTeam } from "@/lib/auth";
 import { CurseBanner } from "./CurseBanner";
@@ -29,6 +31,8 @@ async function TeamView() {
 
   return (
     <>
+      <SessionGuard loginPath="/login" />
+      <ConnectionBanner />
       <header className="space-y-2">
         <div className="flex items-start justify-between gap-3">
           <h1 className="min-w-0 text-3xl font-bold break-words">{team.name}</h1>

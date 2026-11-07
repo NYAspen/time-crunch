@@ -71,9 +71,9 @@ export async function chooseCard(cardId: string): Promise<ActionResult> {
 export async function playCard(
   cardId: string,
   options: {
-    targetCardId?: string; // duplicate: the card to copy
-    targetTeamId?: string; // curse / steal / curse copy
-    inRange?: boolean;
+    targetCardId?: string; // duplicate: the card to copy; range xN / infinite: the curse
+    targetTeamId?: string; // curse / steal / curse copy / boogeyman
+    inRange?: boolean; // range condition met; boogeyman: photo taken
     curseId?: string; // curse xN / curse copy: one of your active curses
     challengeId?: string; // replace / lock challenge
     cardIds?: string[]; // discard X draw Y: the cards to discard

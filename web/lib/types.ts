@@ -98,9 +98,14 @@ export const CARD_TYPE_LABELS: Record<CardTypeKind, string> = { curse: "Curse", 
 //   discard X draw Y   discard X other cards, then draw Y straight into your hand
 //   replace challenge  swap a board challenge for a random one from the pool (Preparation)
 //   lock challenge     only your team can complete that challenge (Preparation, one at a time)
+// Migration 0026:
+//   range xN           a note on one curse in your hand: "range ×N" (range is honor-system, so text only)
+//   range infinite     the same: "infinite range"
+//   boogeyman          after taking a photo, move up to 30 minutes from a team to yours (Elimination)
 export const CARD_EFFECTS_HELP =
   "duplicate, steal, veto, draw X pick Y (e.g. draw 4 pick 2), hand +N (e.g. hand +1), reward x2, curse x2, " +
-  "curse copy, discard X draw Y (e.g. discard 2 draw 3), replace challenge, lock challenge";
+  "curse copy, discard X draw Y (e.g. discard 2 draw 3), replace challenge, lock challenge, " +
+  "range x2, range infinite, boogeyman";
 export type CardEffect = string;
 
 export type ParsedEffect =
@@ -110,7 +115,9 @@ export type ParsedEffect =
   | { kind: "hand"; bonus: number }
   | { kind: "reward" | "curseBoost"; factor: number }
   | { kind: "curseCopy" | "replaceChallenge" | "lockChallenge" }
-  | { kind: "discardDraw"; discard: number; draw: number };
+  | { kind: "discardDraw"; discard: number; draw: number }
+  | { kind: "range"; note: string }
+  | { kind: "boogeyman" };
 
 // null if the text isn't a valid effect.
 export function parseEffect(effect: string | null): ParsedEffect | null {
@@ -129,6 +136,10 @@ export function parseEffect(effect: string | null): ParsedEffect | null {
   if (effect === "curse copy") return { kind: "curseCopy" };
   if (effect === "replace challenge") return { kind: "replaceChallenge" };
   if (effect === "lock challenge") return { kind: "lockChallenge" };
+  if (effect === "boogeyman") return { kind: "boogeyman" };
+  if (effect === "range infinite") return { kind: "range", note: "infinite range" };
+  const range = /^range x([2-9])$/.exec(effect);
+  if (range) return { kind: "range", note: `range ×${range[1]}` };
   const swap = /^discard ([1-9]) draw (\d+)$/.exec(effect);
   if (swap) {
     const draw = Number(swap[2]);
@@ -155,6 +166,7 @@ export type Card = {
   holder_team: string | null;
   draw_id: string | null;
   is_duplicate: boolean;
+  range_note: string | null; // "range xN" / "range infinite" on a curse in a hand (migration 0026)
 };
 
 export type CardDraw = {

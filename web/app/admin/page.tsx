@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
+import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { LogoutButton } from "@/components/LogoutButton";
 import { PhaseBanner } from "@/components/PhaseBanner";
+import { SessionGuard } from "@/components/SessionGuard";
 import { isAdmin } from "@/lib/auth";
 import { ActivityLog } from "./ActivityLog";
 import { CardManager } from "./CardManager";
@@ -30,6 +32,8 @@ async function AdminView() {
 
   return (
     <>
+      <SessionGuard loginPath="/admin/login" />
+      <ConnectionBanner />
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Admin</h1>
         <LogoutButton />

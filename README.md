@@ -183,6 +183,9 @@ There are three ways to bring rows into the admin page. Each one fills the same 
 - `discard 2 draw 3`: discard 2 other cards and draw 3.
 - `replace challenge`: swap a challenge on the board for a random one from the pool.
 - `lock challenge`: only the team that locks a challenge can complete it.
+- `range x2`: adds "range ×2" to one curse in the team's hand. Range is on the honor system, so this only changes the text. Doesn't stack.
+- `range infinite`: the same, with "infinite range".
+- `boogeyman`: Elimination only. After ticking that a photo was taken, up to 30 minutes move from the chosen team to this one. A team with less loses all it has and is eliminated.
 
 **Notes:**
 - Select the header row as well as the data rows when copying from Sheets.
@@ -217,7 +220,9 @@ There are three ways to bring rows into the admin page. Each one fills the same 
 - Curses stack: a team that is cursed *and* cursing one team runs at 1×. A team cursing two teams runs at −1×, so its clock goes **up**.
 - Teams can also change their speed by hand to fix mistakes. If a speed doesn't match the active curses, the curse banner and the admin's **Curses** section offer a one-tap fix.
 
-**Keep the admin page open** on one device during Elimination. It helps the site notice the moment a team's time runs out.
+**Running out of time:** the database checks once a minute, even with every phone locked. An open team or admin page notices within seconds, so keeping the admin page open on one device during Elimination still helps.
+
+**Weak signal:** a yellow "Reconnecting…" sign shows while a phone has no connection, and what it shows may be out of date until the sign goes away. Nothing is lost: the server keeps the real time. Teams can catch up on anything they missed under **Recent events** on the Teams tab.
 
 ---
 
@@ -231,6 +236,7 @@ Run these from inside the `web` folder. They use the keys in `.env.local`. Repla
 | `node --env-file=.env.local scripts/rls-check.mjs "Team A" codeA` | Logs in as a team and tries the things a team must **not** be able to do. Every line should say **BLOCKED ✓**. Run it after every database change. |
 | `node --env-file=.env.local scripts/race-claim.mjs "Team A" codeA "Team B" codeB` | Two teams claim the same challenge at the same instant. Exactly one should win. ⚠ This really claims 2 challenges. |
 | `node --env-file=.env.local scripts/race-draw.mjs "Team A" codeA "Team B" codeB` | Two teams draw cards at the same instant. No card should go to both. ⚠ Each team keeps a real card. |
+| `node --env-file=.env.local scripts/race-speed.mjs "Team A" codeA "Team B" codeB` | Teams change speed at the same instant, many times, during Elimination. There should be no deadlocks. Add more teams for a harder test. ⚠ Adds lines to the log, so use a test game. |
 
 Run **Reset game** after testing.
 

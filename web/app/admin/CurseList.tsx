@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
+import { useSettled } from "@/components/useSettled";
 import { loadClocks, loadCurses, loadTeams } from "@/lib/queries";
 import { curseSpeed } from "@/lib/time";
 import type { ActionResult } from "@/lib/types";
@@ -38,23 +39,15 @@ export function CurseList() {
   // speed should be 1 + curses on it - what its curses take off. Offer a fix if it isn't.
   const speedInfo = (role: string, id: string) => {
     const actual = clocks.find((c) => c.team_id === id)?.speed;
-    const expected = curseSpeed(id, active);
     return (
       <span>
-        {role} {actual}×
-        {actual !== expected && (
-          <>
-            {" "}
-            <b className="text-red-700">(should be {expected}×)</b>{" "}
-            <button
-              disabled={pending}
-              onClick={() => run(() => syncTeamSpeed(id))}
-              className="rounded border bg-white px-2 text-sm disabled:opacity-50"
-            >
-              Fix
-            </button>
-          </>
-        )}
+        {role} {actual}×{" "}
+        <SpeedFix
+          actual={actual}
+          expected={curseSpeed(id, active)}
+          pending={pending}
+          onFix={() => run(() => syncTeamSpeed(id))}
+        />
       </span>
     );
   };
@@ -133,5 +126,27 @@ export function CurseList() {
       )}
       <Notice compact result={result} />
     </CollapsibleSection>
+  );
+}
+
+function SpeedFix({
+  actual,
+  expected,
+  pending,
+  onFix,
+}: {
+  actual: number | undefined;
+  expected: number;
+  pending: boolean;
+  onFix: () => void;
+}) {
+  if (!useSettled(actual !== expected)) return null;
+  return (
+    <>
+      <b className="text-red-700">(should be {expected}×)</b>{" "}
+      <button disabled={pending} onClick={onFix} className="rounded border bg-white px-2 text-sm disabled:opacity-50">
+        Fix
+      </button>
+    </>
   );
 }

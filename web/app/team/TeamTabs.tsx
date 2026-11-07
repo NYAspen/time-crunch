@@ -7,6 +7,7 @@ import { useLiveTable } from "@/components/useLiveTable";
 import { loadCardDraws, loadCards, loadGameState, loadLedger, loadTeams } from "@/lib/queries";
 import { CardHand } from "./CardHand";
 import { ChallengeBoard } from "./ChallengeBoard";
+import { RecentEvents } from "./EventFeed";
 
 const TABS = [
   { id: "challenges", label: "Challenges" },
@@ -76,6 +77,7 @@ export function TeamTabs({ teamId }: { teamId: string }) {
       </div>
       <div hidden={shown !== "teams"}>
         <TeamList highlightTeamId={teamId} />
+        <RecentEvents teamId={teamId} />
         {/* Kept out of the way: only needed to check why your time changed. */}
         <details className="mt-6 text-sm text-gray-500">
           <summary className="cursor-pointer underline">Show my time history</summary>

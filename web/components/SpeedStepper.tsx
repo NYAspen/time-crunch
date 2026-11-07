@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useOffline } from "@/lib/connection";
 
 // Countdown speed with ▲ / ▼ arrows: each tap moves the speed by 1×.
 // Taps show straight away; after a short pause they are sent together as one
@@ -31,6 +32,10 @@ export function SpeedStepper({
   vertical?: boolean; // ▲ above the speed, ▼ below (next to the countdown)
   dark?: boolean;
 }) {
+  // With no connection a tap may or may not arrive, so tapping again could shift
+  // the speed twice. The arrows wait until the real speed has reloaded.
+  const offline = useOffline();
+  const locked = disabled || offline;
   // While taps are waiting or being sent, show the speed they add up to.
   const [shown, setShown] = useState<number | null>(null);
   const [idle, setIdle] = useState(true);
@@ -89,7 +94,7 @@ export function SpeedStepper({
     <button
       type="button"
       aria-label="Faster: speed up 1×"
-      disabled={disabled || value >= MAX_SPEED}
+      disabled={locked || value >= MAX_SPEED}
       onClick={() => tap(1)}
       className={arrow}
     >
@@ -100,7 +105,7 @@ export function SpeedStepper({
     <button
       type="button"
       aria-label="Slower: speed down 1×"
-      disabled={disabled || value <= MIN_SPEED}
+      disabled={locked || value <= MIN_SPEED}
       onClick={() => tap(-1)}
       className={arrow}
     >

@@ -197,6 +197,13 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
   - **Don't** go back to `postgres_changes` subscriptions per component. Supabase checks RLS for every change × every subscription, one at a time, and with about 30 subscriptions per page that made updates arrive seconds late.
   - `scripts/sync-check.mjs` measures the delay.
 - **Rule:** on the **team page**, show every action's result with `showResult(result)` from `components/Toasts.tsx` (a pop-down at the top; green fades after 5 s, others after 8 s; × to close). Pass `{ undoable: true }` for actions that create a team undo (claim, use, discard, clear, veto): their message then shows only in the bottom Undo bar ("✓ Done … Undo"), never twice. On the **admin page**, use `components/Notice.tsx` inline. Don't write one-off message boxes.
+- **Weak signal** (`lib/connection.ts`): every browser request to Supabase goes through `resilientFetch`, set in `lib/supabase/client.ts`.
+  - Requests time out after 10 s. A failed game request comes back as an error with a clear message, and is never resent, since it may have arrived. Login requests get a real network failure, so a signal drop can't end a login.
+  - Deadlocks are retried up to twice: the database undid the action, so it can't apply twice.
+  - `useOffline()` drives `components/ConnectionBanner.tsx` and locks the speed arrows. While offline it pings every 5 s, then live data reloads and the clock re-measures.
+  - `useLiveTable` keeps the last good data when a reload fails. It only reports an error if nothing has loaded yet.
+  - `useServerNow` shares one clock measurement per page and returns null until it has one, so a wrong phone clock never shows.
+  - `components/SessionGuard.tsx` goes to the login page if the login ends.
 - **Rule:** after any action, call `refreshAllLiveTables()`, or wrap form actions in `withRefresh(...)`. Every section then updates immediately; Supabase's realtime messages can take a few seconds and are only a backup.
 
 **Migrations:**
@@ -208,7 +215,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - Challenges and cards are CSV files in `content/`, editable in Google Sheets or Excel.
 - They are loaded through an admin Import screen (`components/ImportTable.tsx`). A CSV file, a Google Sheets link ("Anyone with the link can view") or pasted rows all fill the same box, and the admin then taps Import. `lib/csv.ts` reads the result.
 - **Challenges** (`content/challenges-example.csv`) have the columns `title, task, location, reward_cards, reward_keep, reward_minutes`. `location` (blank = anywhere) and `reward_keep` (default 1) are optional. Copy the rows from Google Sheets, headers included, into Admin → Challenges → Import. Imported challenges go into the hidden pool, and the board fills from it at random.
-- **Cards** (`content/cards-example.csv`) have the columns `name, type, copies, description, range, clearance, effect`. `type` is `curse` or `powerup`; `effect` is blank (manual), `duplicate`, `steal`, `veto`, `draw X pick Y`, `hand +N`, `reward xN`, `curse xN`, `curse copy`, `discard X draw Y`, `replace challenge` or `lock challenge`. Import them in Admin → Cards → Import cards.
+- **Cards** (`content/cards-example.csv`) have the columns `name, type, copies, description, range, clearance, effect`. `type` is `curse` or `powerup`; `effect` is blank (manual), `duplicate`, `steal`, `veto`, `draw X pick Y`, `hand +N`, `reward xN`, `curse xN`, `curse copy`, `discard X draw Y`, `replace challenge`, `lock challenge`, `range xN`, `range infinite` or `boogeyman`. Import them in Admin → Cards → Import cards.
 
 **Fresh test game:** the admin-only "Reset game" (type RESET to confirm) works like this:
 - It clears time, time history, claims, hands, draws, curses and the activity log.
@@ -483,8 +490,22 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - **Admin Replace on the board** (migration `0023_notify_challenge_replaced.sql`, 2026-11-04; **not yet run**): a Replace button with a confirm step on each board challenge. It uses `admin_set_challenge_status(…, 'retired')`, which refills the board at random. Greyed out when the pool is empty.
   - Teams get a pop-down when a board challenge is replaced or removed in Preparation (`tell_teams` in the log entry, `team_feed`). Hidden pool challenges are never mentioned.
 
+- **Sync fixes for play from many locations** (migrations `0024_sync_fixes.sql` and `0025_elimination_cron.sql`, 2026-11-04; **not yet run**):
+  - `_sweep_eliminations` uses `skip locked`, so simultaneous actions no longer deadlock on it. `scripts/race-speed.mjs` tests this.
+  - A `pg_cron` job runs the elimination check once a minute, so a team is eliminated, and curses on it end, even with every phone locked.
+  - `team_feed` reaches back 12 hours and 30 entries. If too many arrive at once, red news pops down first with a pointer to **Recent events** on the Teams tab.
+  - Speed-mismatch prompts only show once a mismatch has lasted 3 s (`components/useSettled.ts`). See "Weak signal" in section 6 for the rest.
+
+- **Range power-ups and The Boogeyman** (migration `0026_range_boogeyman.sql`, 2026-11-07; run):
+  - `range xN` / `range infinite`: played on a curse in the team's hand, they set `cards.range_note` ("range ×2" / "infinite range"). Text only, since range is honor-system. It shows on the card and the range confirmation, and goes into the curse's `range_text` when played.
+  - The note stays on a card in the deck, so Undo brings it back. A trigger clears it when the card is next drawn, and `admin_move_card` clears it when giving from the deck.
+  - `boogeyman` (Elimination): a "photo taken" tick (sent as `p_in_range`) and a target. Moves up to 30 minutes from the target to the attacker. The target gets a pop-down. Logged as `card_used` with `taken_minutes`, so the admin's activity-log Undo works.
+  - Undo is refused if the target has been eliminated, or the attacker no longer has the time.
+  - `use_card` keeps the same arguments, so open pages keep working during a deploy.
+  - **Run the migration before the code goes live:** `loadCards` reads `range_note`, so the Cards tab errors without it.
+
 ### Outstanding
-- Run migration 0023 in Supabase. Until then Replace works, but teams get no pop-down.
+- Run migration 0023 if it hasn't been run (until then Replace works, but teams get no pop-down), then 0024, 0025, 0026 and 0027 (`0027_existing_range_boogeyman_cards.sql` turns on the effects for those three cards, already imported with a blank effect). Don't re-import them: an import always adds new card types and copies.
 - Deploy the code for migrations 0021 and 0022 right away: until it is live, the old site errors on `teams.speed`.
 - Full-loop test on several phones.
 - Stages 2–5 (Tier 1) by Nov 1. Then the playtest, Tier 2 if there is time, and the rehearsal (section 2).
@@ -569,6 +590,7 @@ Keep explanations short and practical, with no jargon. When something is ambiguo
 - 2026-11-03: **Challenges are Preparation only** (board hidden in Elimination); **steals allowed in Preparation**; **an eliminated team's curses end** (no time transfer after elimination; the few seconds between hitting zero and the server noticing are not refunded). Challenges get a location and "draw N pick K" rewards (migration 0016).
 - 2026-11-03: **Several curses per team, one per pair of teams** (D10), and **speed arrows** (D13): teams step their own speed 1× at a time, −20× to 20×, instead of picking 0×/1×/2×. Default chosen: teams can step below 0× by hand too (logged and public). Alternative if abused: limit teams' own arrows to 0×–2× and leave the full range to the admin.
 - 2026-11-03: **Six more power-ups** (migration 0019). Defaults confirmed: reward ×N applies to the *next* completion (time and draws); curse ×N is played on an active curse and only boosts the attacker's gain; curse copy is played on an active curse; a lock lasts until the team completes it, one lock per team. **×N power-ups don't stack.** Defaults chosen: discard X draw Y keeps all Y drawn; a replaced challenge goes back to the pool.
+- 2026-11-07: **Range power-ups and The Boogeyman** (migration 0026). Defaults chosen: one range note per curse (they don't stack, and Infinity can't go on a doubled curse); a stolen curse keeps its note; a duplicate doesn't copy it; a curse copy keeps the copied curse's note; range cards work in either phase; The Boogeyman on a team with under 30 minutes takes all it has and eliminates it, and the attacker gains only that amount.
 - 2026-11-04: **A team's speed is private** (replaces "Speed is public" from 2026-10-22), **the admin can see team codes** (stored readable, admin only), and **steals have no range** (migration 0022).
 - 2026-11-04: **Paid veto, and vetoes are curses only** (D14, migration 0021). Replaces "Veto takes back a stolen card" from 2026-11-02. Defaults chosen: the Veto card stays free alongside the paid option, and a paid veto can be undone like a card veto.
 - 2026-10-23: **Curses can't be played during Preparation**, only during Elimination (D11). Teams can still draw and hold them in the morning.

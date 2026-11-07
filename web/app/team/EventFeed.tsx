@@ -11,14 +11,15 @@ import type { FeedEntry } from "@/lib/types";
 // Pops down a notification for each new thing another team or the admin did
 // that matters to this team (team_feed, migration 0020). The newest entry
 // shown is remembered on this phone, so a reload doesn't repeat them, and
-// anything that happened while the phone was locked (last 30 min) still shows.
+// anything that happened while the phone was locked or offline still shows.
 const SEEN_KEY = "tc-feed-seen";
 const MAX_AT_ONCE = 3;
 
 function readSeen(teamId: string): number | null {
   try {
-    const saved = Number(localStorage.getItem(`${SEEN_KEY}-${teamId}`));
-    return Number.isFinite(saved) && saved > 0 ? saved : null;
+    const raw = localStorage.getItem(`${SEEN_KEY}-${teamId}`);
+    const saved = Number(raw);
+    return raw !== null && Number.isFinite(saved) ? saved : null;
   } catch {
     return null;
   }
@@ -47,11 +48,23 @@ export function EventFeed({ teamId }: { teamId: string }) {
     seen.current = restart ? newest : Math.max(newest, last);
     saveSeen(teamId, seen.current);
 
-    const toasts = fresh
-      .map((e) => describe(e, teamId))
-      .filter((t): t is Omit<Toast, "id"> => t !== null)
-      .slice(0, MAX_AT_ONCE)
-      .reverse(); // oldest first, so the newest ends up on top
+    const all = fresh.map((e) => describe(e, teamId)).filter((t): t is Omit<Toast, "id"> => t !== null);
+    // Back from a tunnel with too many to show: bad news first, then a pointer
+    // to the rest, so nothing is silently lost.
+    const toasts =
+      all.length <= MAX_AT_ONCE
+        ? [...all].reverse() // oldest first, so the newest ends up on top
+        : [
+            {
+              tone: "black" as const,
+              icon: "i",
+              title: "While you were away",
+              message: `${all.length - (MAX_AT_ONCE - 1)} more updates. See Recent events on the Teams tab.`,
+            },
+            ...[...all.filter((t) => t.tone === "red"), ...all.filter((t) => t.tone !== "red")]
+              .slice(0, MAX_AT_ONCE - 1)
+              .reverse(),
+          ];
     toasts.forEach(showToast);
     // A short buzz for bad news (Android only; iPhones ignore it).
     if (toasts.some((t) => t.tone === "red")) {
@@ -62,6 +75,38 @@ export function EventFeed({ teamId }: { teamId: string }) {
   }, [feed, teamId]);
 
   return null;
+}
+
+// The same news as a list on the Teams tab, for anything missed or closed too soon.
+export function RecentEvents({ teamId }: { teamId: string }) {
+  const { data: feed } = useLiveTable("activity_log", loadTeamFeed);
+  const events = (feed ?? []).flatMap((e) => {
+    const toast = describe(e, teamId);
+    return toast ? [{ id: e.id, at: e.created_at, ...toast }] : [];
+  });
+
+  return (
+    <details className="mt-6 text-sm">
+      <summary className="cursor-pointer font-bold">Recent events ({events.length})</summary>
+      {events.length === 0 ? (
+        <p className="mt-2 text-gray-500">Nothing yet.</p>
+      ) : (
+        <ul className="mt-2 divide-y border bg-white">
+          {events.map((e) => (
+            <li key={e.id} className="p-2">
+              <span className="flex justify-between gap-2">
+                <b>{e.title}</b>
+                <span className="shrink-0 text-xs text-gray-500">
+                  {new Date(e.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                </span>
+              </span>
+              {e.message}
+            </li>
+          ))}
+        </ul>
+      )}
+    </details>
+  );
 }
 
 function describe(e: FeedEntry, teamId: string): Omit<Toast, "id"> | null {
@@ -104,7 +149,22 @@ function describe(e: FeedEntry, teamId: string): Omit<Toast, "id"> | null {
         title: "Challenge replaced",
         message: `${team} completed "${d.challenge}". A new challenge is on the board.`,
       };
+    case "boogeyman_undone":
+      return {
+        tone: "black",
+        icon: "i",
+        title: "Time back",
+        message: `${team} undid The Boogeyman. You got your ${d.taken_minutes} minutes back.`,
+      };
     case "card_used":
+      if (d.taken_minutes) {
+        return {
+          tone: "red",
+          icon: "!",
+          title: "Time taken",
+          message: `${team} used ${d.card} on you and took ${d.taken_minutes} minutes of your time.`,
+        };
+      }
       if (!d.challenge) return null;
       return d.new_challenge
         ? {

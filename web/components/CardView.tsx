@@ -22,11 +22,14 @@ const BADGE_STYLES: Record<CardType["type"], string> = {
 export function CardView({
   cardType,
   isDuplicate,
+  rangeNote,
   compact,
   children,
 }: {
   cardType: CardType;
   isDuplicate?: boolean;
+  rangeNote?: string | null; // "range ×2" / "infinite range" on this copy of a curse
+
   compact?: boolean;
   children?: React.ReactNode;
 }) {
@@ -36,7 +39,19 @@ export function CardView({
   const body = isCurse ? cardType.clearance : cardType.description;
   const rows = [
     // Steals have no range, even if the imported sheet gave one.
-    { label: "Range", value: cardType.effect === "steal" ? "" : cardType.range_text },
+    {
+      label: "Range",
+      value:
+        cardType.effect === "steal" ? (
+          ""
+        ) : rangeNote ? (
+          <>
+            {cardType.range_text} <b>({rangeNote})</b>
+          </>
+        ) : (
+          cardType.range_text
+        ),
+    },
     ...(isCurse ? [] : [{ label: "To clear", value: cardType.clearance }]),
   ].filter((r) => r.value);
 

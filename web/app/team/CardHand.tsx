@@ -186,7 +186,7 @@ export function CardHand({ teamId }: { teamId: string }) {
 function phaseNeeded(t: CardType): Phase | null {
   if (t.type === "curse") return "elimination";
   const kind = parseEffect(t.effect)?.kind;
-  if (kind === "curseBoost" || kind === "curseCopy") return "elimination";
+  if (kind === "curseBoost" || kind === "curseCopy" || kind === "boogeyman") return "elimination";
   if (kind === "reward" || kind === "replaceChallenge" || kind === "lockChallenge") return "preparation";
   return null;
 }
@@ -259,9 +259,9 @@ function HandCard({
   run: (action: () => Promise<ActionResult>, undoable?: boolean) => void;
 }) {
   const [mode, setMode] = useState<"idle" | "use" | "discard">("idle");
-  const [target, setTarget] = useState(""); // duplicate: card to copy
-  const [targetTeam, setTargetTeam] = useState(""); // curse / steal: the other team
-  const [inRange, setInRange] = useState(false);
+  const [target, setTarget] = useState(""); // duplicate: card to copy; range: the curse
+  const [targetTeam, setTargetTeam] = useState(""); // curse / steal / boogeyman: the other team
+  const [inRange, setInRange] = useState(false); // range condition met; boogeyman: photo taken
   const [curseId, setCurseId] = useState(""); // curse xN / curse copy: one of your curses
   const [challengeId, setChallengeId] = useState(""); // replace / lock challenge
   const [picked, setPicked] = useState<string[]>([]); // discard X draw Y: cards to discard
@@ -273,7 +273,10 @@ function HandCard({
   const isSteal = effect?.kind === "steal";
   const isVeto = effect?.kind === "veto";
   const isCurseCopy = effect?.kind === "curseCopy";
-  const needsTeam = isCurse || isSteal || isCurseCopy;
+  const isBoogeyman = effect?.kind === "boogeyman";
+  const isRangeUp = effect?.kind === "range";
+  const cursesInHand = others.filter((c) => typeOf(c)?.type === "curse");
+  const needsTeam = isCurse || isSteal || isCurseCopy || isBoogeyman;
   const needsRange = isCurse || isCurseCopy;
   const needsCurse = effect?.kind === "curseBoost" || isCurseCopy;
   const needsChallenge = effect?.kind === "replaceChallenge" || effect?.kind === "lockChallenge";
@@ -284,20 +287,22 @@ function HandCard({
     canUse &&
     (!needsTeam || !!targetTeam) &&
     (!needsRange || inRange) &&
+    (!isBoogeyman || inRange) &&
     (!needsCurse || !!curseId) &&
     (!needsChallenge || !!challengeId) &&
     picked.length === discardCount &&
-    (!isDuplicateEffect || !!target);
+    (!isDuplicateEffect || !!target) &&
+    (!isRangeUp || !!target);
   // A curse copy's range is the copied curse's range.
   const rangeText = isCurseCopy
     ? (myCurses.find((c) => c.id === curseId)?.range_text ?? "")
-    : cardType.range_text;
+    : [cardType.range_text, card.range_note && `(${card.range_note})`].filter(Boolean).join(" ");
 
   // Compact, two to a row, and it stays that size while being used or
   // discarded: the confirm controls are stacked to fit the narrow card.
   return (
     <li>
-      <CardView cardType={cardType} isDuplicate={card.is_duplicate} compact>
+      <CardView cardType={cardType} isDuplicate={card.is_duplicate} rangeNote={card.range_note} compact>
         {mode === "idle" && (
           <div className="flex flex-col items-start gap-2 pt-1">
             {stealFailed && (
@@ -431,6 +436,19 @@ function HandCard({
                       );
                     })}
                   </select>
+                  {isBoogeyman && (
+                    <label className="flex items-start gap-1.5 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={inRange}
+                        onChange={(e) => setInRange(e.target.checked)}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        We took a photo of this team. <b>Take 30 minutes</b> of their time and give it to us.
+                      </span>
+                    </label>
+                  )}
                   {needsRange && (
                     <label className="flex items-start gap-1.5 text-xs">
                       <input
@@ -467,6 +485,21 @@ function HandCard({
                   ))}
                 </select>
               )
+            ) : isRangeUp ? (
+              cursesInHand.length === 0 ? (
+                <p>You need a curse in your hand to use this on.</p>
+              ) : (
+                <select value={target} onChange={(e) => setTarget(e.target.value)} className="w-full rounded border bg-white px-1 py-2">
+                  <option value="">Pick a curse</option>
+                  {cursesInHand.map((c) => (
+                    // Range power-ups don't stack (checked in the database too).
+                    <option key={c.id} value={c.id} disabled={!!c.range_note}>
+                      {typeOf(c)?.name}
+                      {c.range_note ? ` (already ${c.range_note})` : ""}
+                    </option>
+                  ))}
+                </select>
+              )
             ) : (
               <p>
                 Use <b>{cardType.name}</b> now? It leaves your hand
@@ -481,9 +514,9 @@ function HandCard({
                   setStealFailed(null);
                   run(async () => {
                     const r = await playCard(card.id, {
-                      targetCardId: isDuplicateEffect ? target : undefined,
+                      targetCardId: isDuplicateEffect || isRangeUp ? target : undefined,
                       targetTeamId: needsTeam ? targetTeam : undefined,
-                      inRange: needsRange ? inRange : undefined,
+                      inRange: needsRange || isBoogeyman ? inRange : undefined,
                       curseId: needsCurse ? curseId : undefined,
                       challengeId: needsChallenge ? challengeId : undefined,
                       cardIds: discardCount > 0 ? picked : undefined,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { RECONNECTED_EVENT } from "@/lib/connection";
 import { createClient } from "@/lib/supabase/client";
 
 const REFRESH_EVENT = "live-tables-refresh";
@@ -73,6 +74,7 @@ export function useLiveTable<T>(table: string, load: () => Promise<T>) {
   // otherwise a slow, older reply could overwrite fresher data.
   const latestRequest = useRef(0);
   const mounted = useRef(true);
+  const loadedOnce = useRef(false);
 
   const refresh = useCallback(() => {
     const requestId = ++latestRequest.current;
@@ -80,16 +82,21 @@ export function useLiveTable<T>(table: string, load: () => Promise<T>) {
       .current()
       .then((result) => {
         if (mounted.current && requestId === latestRequest.current) {
+          loadedOnce.current = true;
           setData(result);
           setError(null);
         }
       })
       .catch((e: unknown) => {
-        if (mounted.current && requestId === latestRequest.current) {
+        // A failed reload (usually a signal drop) keeps the last good data on
+        // screen: the connection banner says it may be out of date.
+        if (loadedOnce.current) {
+          console.warn(`Could not reload ${table}:`, e);
+        } else if (mounted.current && requestId === latestRequest.current) {
           setError(e instanceof Error ? e.message : "Could not load data");
         }
       });
-  }, []);
+  }, [table]);
 
   useEffect(() => {
     mounted.current = true;
@@ -105,6 +112,7 @@ export function useLiveTable<T>(table: string, load: () => Promise<T>) {
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("online", refresh);
     window.addEventListener(REFRESH_EVENT, refresh);
+    window.addEventListener(RECONNECTED_EVENT, refresh);
     const poll = setInterval(refresh, 20000);
 
     refresh();
@@ -115,6 +123,7 @@ export function useLiveTable<T>(table: string, load: () => Promise<T>) {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", refresh);
       window.removeEventListener(REFRESH_EVENT, refresh);
+      window.removeEventListener(RECONNECTED_EVENT, refresh);
       clearInterval(poll);
     };
   }, [table, refresh]);

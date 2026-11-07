@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { Countdown } from "@/components/Countdown";
+import { SignBox } from "@/components/SignBox";
 import { refreshAllLiveTables, useLiveTable } from "@/components/useLiveTable";
 import { useServerNow } from "@/components/useServerNow";
 import { loadClocks, loadGameState, loadTeams } from "@/lib/queries";
@@ -18,6 +20,19 @@ export function TeamClockPanel({ teamId }: { teamId: string }) {
 
   const team = teams?.find((t) => t.id === teamId);
   const clock = clocks?.find((c) => c.team_id === teamId);
+  // Every team has a clock, so getting none back means the login has ended.
+  if (clocks && !clock) {
+    return (
+      <SignBox tone="red" title="You've been logged out">
+        <p>
+          <Link href="/login" className="font-bold underline">
+            Log in again
+          </Link>{" "}
+          with your team code. Your time and cards are safe. Ask the admin if you need your code.
+        </p>
+      </SignBox>
+    );
+  }
   if (!game || !team || !clock || serverNow === null) {
     return <p className="text-gray-500">Loading your time…</p>;
   }

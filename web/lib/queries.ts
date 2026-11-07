@@ -99,7 +99,7 @@ export async function loadCardTypes(): Promise<CardType[]> {
 export async function loadCards(): Promise<Card[]> {
   const { data, error } = await createClient()
     .from("cards")
-    .select("id, type_id, status, holder_team, draw_id, is_duplicate")
+    .select("id, type_id, status, holder_team, draw_id, is_duplicate, range_note")
     .neq("status", "removed")
     .order("updated_at");
   if (error) throw new Error(error.message);

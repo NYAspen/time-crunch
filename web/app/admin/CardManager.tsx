@@ -281,6 +281,7 @@ function HeldCardRow({ card, cardType, teams }: { card: Card; cardType?: CardTyp
         <span className="min-w-0 flex-1">
           {cardType?.name ?? "?"}
           {card.is_duplicate && <span className="text-gray-500"> (copy)</span>}
+          {card.range_note && <span className="text-gray-500"> ({card.range_note})</span>}
           {card.status === "offered" && <span className="text-purple-700"> (being chosen)</span>}
         </span>
         {card.status === "hand" && (
